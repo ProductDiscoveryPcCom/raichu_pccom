@@ -15,6 +15,7 @@ import json
 import time
 import pandas as pd
 import os
+import re
 from datetime import datetime
 from gsc_checker import GSCChecker, render_gsc_auth_ui, render_gsc_check_results
 
@@ -23,8 +24,8 @@ from gsc_checker import GSCChecker, render_gsc_auth_ui, render_gsc_check_results
 # ============================================================================
 
 st.set_page_config(
-    page_title="Content Generator | PcComponentes",
-    page_icon="🛒",
+    page_title="Raichu PcCom V1.0 | PcComponentes",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -48,7 +49,6 @@ if 'GSC_CLIENT_CONFIG' in st.secrets:
 def load_categories_data():
     """Carga el CSV de categorías con debug mejorado"""
     
-    # Lista de posibles ubicaciones del CSV
     possible_paths = [
         'data/categories.csv',
         os.path.join(os.path.dirname(__file__), 'data', 'categories.csv'),
@@ -68,7 +68,6 @@ def load_categories_data():
             debug_info.append(f"Error en {csv_path}: {str(e)}")
             continue
     
-    # Error con información de debug
     st.error("❌ No se encontró el archivo categories.csv")
     
     with st.expander("🔍 Debug - Click para ver detalles"):
@@ -92,14 +91,6 @@ def load_categories_data():
                     st.text(f"  - {f}")
         except Exception as e:
             st.error(f"Error listando archivos: {e}")
-    
-    st.warning("""
-    💡 **Pasos para solucionar:**
-    
-    1. Verifica que la carpeta `data/` está en GitHub
-    2. Verifica que `categories.csv` está dentro de `data/`
-    3. Haz push y reinicia la app en Streamlit Cloud
-    """)
     
     return None
 
@@ -662,6 +653,198 @@ ARQUETIPOS = {
                 "help": "Experiencia del primer uso"
             }
         }
+    },
+    "ARQ-13": {
+        "code": "ARQ-13",
+        "name": "❓ FAQ / Preguntas Frecuentes",
+        "description": "Respuestas a las preguntas más comunes sobre un producto o categoría",
+        "funnel": "Middle",
+        "default_length": 1400,
+        "use_case": "Resolver dudas comunes, SEO de long-tail queries",
+        "campos_especificos": {
+            "producto_categoria": {
+                "label": "Producto o categoría",
+                "type": "text",
+                "placeholder": "Ej: Robots aspiradores / Xiaomi Robot Vacuum E5",
+                "help": "Sobre qué trata el FAQ"
+            },
+            "preguntas_principales": {
+                "label": "Preguntas principales (una por línea)",
+                "type": "textarea",
+                "placeholder": "¿Cuánto dura la batería?\n¿Se puede usar en alfombras?\n¿Necesita WiFi?",
+                "help": "Preguntas más comunes"
+            },
+            "audiencia": {
+                "label": "Audiencia objetivo",
+                "type": "text",
+                "placeholder": "Ej: Usuarios primerizos / Personas considerando compra",
+                "help": "Para quién va dirigido"
+            }
+        }
+    },
+    "ARQ-14": {
+        "code": "ARQ-14",
+        "name": "🎯 Caso de Uso Específico",
+        "description": "Soluciones para un problema o caso de uso muy concreto",
+        "funnel": "Bottom",
+        "default_length": 1600,
+        "use_case": "Nichos específicos (mascotas, pisos pequeños, etc.)",
+        "campos_especificos": {
+            "problema_especifico": {
+                "label": "Problema o caso de uso",
+                "type": "text",
+                "placeholder": "Ej: Limpieza efectiva con perros que sueltan mucho pelo",
+                "help": "Qué problema resuelve"
+            },
+            "contexto_detallado": {
+                "label": "Contexto detallado",
+                "type": "textarea",
+                "placeholder": "Ej: Dos perros labradores, piso 90m², suelos parquet y alfombras, pelo diario abundante",
+                "help": "Situación específica del usuario"
+            },
+            "caracteristicas_criticas": {
+                "label": "Características críticas para este caso",
+                "type": "textarea",
+                "placeholder": "Ej: Cepillo anti-enredo, depósito grande, succión 2500Pa+, app con alertas",
+                "help": "Qué debe tener sí o sí"
+            },
+            "productos_recomendados": {
+                "label": "Productos recomendados",
+                "type": "text",
+                "placeholder": "Ej: Roborock S7+ (premium), Conga 4690 (gama media), Xiaomi E10 (económico)",
+                "help": "Productos que mejor funcionan"
+            }
+        }
+    },
+    "ARQ-15": {
+        "code": "ARQ-15",
+        "name": "⚠️ Errores Comunes",
+        "description": "Errores típicos al comprar o usar un producto",
+        "funnel": "Middle",
+        "default_length": 1400,
+        "use_case": "Educar para evitar frustraciones post-compra",
+        "campos_especificos": {
+            "categoria_producto": {
+                "label": "Categoría o producto",
+                "type": "text",
+                "placeholder": "Ej: Robots aspiradores / Portátiles gaming",
+                "help": "Sobre qué trata"
+            },
+            "errores_principales": {
+                "label": "Errores principales (uno por línea)",
+                "type": "textarea",
+                "placeholder": "No considerar la altura del robot\nElegir por precio solo\nIgnorar tipo de suelos",
+                "help": "Errores más comunes"
+            },
+            "consecuencias": {
+                "label": "Consecuencias de cada error",
+                "type": "textarea",
+                "placeholder": "No puede limpiar debajo de muebles\nRenunciando a funciones esenciales\nRendimiento pobre en alfombras",
+                "help": "Qué pasa si se comete cada error"
+            }
+        }
+    },
+    "ARQ-16": {
+        "code": "ARQ-16",
+        "name": "🆚 X vs Y - Cuál elegir",
+        "description": "Dilema entre dos opciones con recomendación clara según perfil",
+        "funnel": "Bottom",
+        "default_length": 1600,
+        "use_case": "Ayudar a decidir entre dos alternativas populares",
+        "campos_especificos": {
+            "opcion_a": {
+                "label": "Opción A",
+                "type": "text",
+                "placeholder": "Ej: Xiaomi Robot Vacuum E5",
+                "help": "Primera opción"
+            },
+            "opcion_b": {
+                "label": "Opción B",
+                "type": "text",
+                "placeholder": "Ej: Roborock Q7",
+                "help": "Segunda opción"
+            },
+            "perfiles_usuario": {
+                "label": "Perfiles de usuario",
+                "type": "textarea",
+                "placeholder": "Perfil 1: Presupuesto ajustado\nPerfil 2: Necesita mapeo\nPerfil 3: Casa grande",
+                "help": "Diferentes tipos de usuarios"
+            },
+            "recomendacion_por_perfil": {
+                "label": "Recomendación por perfil",
+                "type": "textarea",
+                "placeholder": "Perfil 1 → Xiaomi E5\nPerfil 2 → Roborock Q7\nPerfil 3 → Roborock Q7",
+                "help": "Cuál elegir según perfil"
+            }
+        }
+    },
+    "ARQ-17": {
+        "code": "ARQ-17",
+        "name": "📊 Comparativa Tabla",
+        "description": "Comparación visual de múltiples productos en tabla",
+        "funnel": "Middle",
+        "default_length": 1200,
+        "use_case": "Comparar 3-5 productos visualmente",
+        "campos_especificos": {
+            "productos_comparar": {
+                "label": "Productos a comparar (uno por línea)",
+                "type": "textarea",
+                "placeholder": "Xiaomi E5\nRoborock Q7\nConga 4690\niRobot Roomba i3",
+                "help": "Lista de productos"
+            },
+            "criterios_tabla": {
+                "label": "Criterios de comparación (columnas)",
+                "type": "textarea",
+                "placeholder": "Precio\nPotencia succión\nAutonomía\nMapeo\nFregado\nApp",
+                "help": "Qué aspectos comparar"
+            },
+            "destacar_ganador": {
+                "label": "¿Destacar ganador por criterio?",
+                "type": "text",
+                "placeholder": "Sí / No",
+                "help": "Marcar el mejor en cada categoría"
+            }
+        }
+    },
+    "ARQ-18": {
+        "code": "ARQ-18",
+        "name": "🎁 Regalo Perfecto",
+        "description": "Guía de regalo para ocasión o persona específica",
+        "funnel": "Top/Middle",
+        "default_length": 1400,
+        "use_case": "Navidad, cumpleaños, ocasiones especiales",
+        "campos_especificos": {
+            "ocasion": {
+                "label": "Ocasión",
+                "type": "text",
+                "placeholder": "Ej: Navidad / Cumpleaños papá / Día de la madre",
+                "help": "Para qué ocasión"
+            },
+            "perfil_receptor": {
+                "label": "Perfil del receptor",
+                "type": "textarea",
+                "placeholder": "Ej: Persona mayor, no muy tech-savvy, vive en piso pequeño, le gusta la limpieza",
+                "help": "Cómo es la persona que recibe el regalo"
+            },
+            "presupuesto_regalo": {
+                "label": "Presupuesto",
+                "type": "text",
+                "placeholder": "Ej: 50-100€ / 100-200€ / Sin límite",
+                "help": "Rango de precio del regalo"
+            },
+            "opciones_regalo": {
+                "label": "Opciones de regalo (una por línea)",
+                "type": "textarea",
+                "placeholder": "Xiaomi E5 (económico)\nRoborock Q7 (gama media)\nRoborock S7+ (premium)",
+                "help": "Productos recomendados"
+            },
+            "por_que_perfecto": {
+                "label": "Por qué es perfecto para esta ocasión",
+                "type": "textarea",
+                "placeholder": "Ej: Regalar tiempo libre, producto útil que se usa a diario, tecnología accesible",
+                "help": "Justificación del regalo"
+            }
+        }
     }
 }
 
@@ -853,32 +1036,363 @@ h3 { font-size: 1.25em; }
 # ============================================================================
 
 def generate_product_module(article_id, nombre=""):
-    """Genera shortcode de producto destacado"""
-    return f'#MODULE_START#|{{"type":"article","params":{{"articleId":"{article_id}"}}}}|#MODULE_END#'
+    """Genera shortcode de producto destacado con espacios HTML"""
+    shortcode = f'#MODULE_START#|{{"type":"article","params":{{"articleId":"{article_id}"}}}}|#MODULE_END#'
+    # Envolver con divs para asegurar espaciado visual
+    return f'<div style="margin: 2em 0;">\n{shortcode}\n</div>'
 
 def generate_carousel_module(slug, category_id, order, navigation, loop, article_amount):
-    """Genera shortcode de carrusel de categoría"""
+    """Genera shortcode de carrusel de categoría con espacios HTML"""
     shortcode = {
         "type": "carouselArticle",
         "params": {
             "articlesIds": [],
             "slug": slug,
-            "slugUuids": {
-                "categoryId": category_id
-            },
+            "slugUuids": {"categoryId": category_id},
             "order": order,
             "articleAmount": article_amount,
             "activityName": "",
             "title": "",
-            "collection": {
-                "name": "",
-                "id": ""
-            },
+            "collection": {"name": "", "id": ""},
             "navigation": navigation == "true",
             "loop": loop == "true"
         }
     }
-    return f"#MODULE_START#|{json.dumps(shortcode)}|#MODULE_END#"
+    shortcode_str = f"#MODULE_START#|{json.dumps(shortcode)}|#MODULE_END#"
+    return f'<div style="margin: 2em 0;">\n{shortcode_str}\n</div>'
+
+# ============================================================================
+# PROMPTS PARA FLUJO DE 3 ETAPAS
+# ============================================================================
+
+def build_generation_prompt_stage1_draft(pdp_data, arquetipo, target_length, keywords, 
+                                         context, links, modules, objetivo, 
+                                         producto_alternativo, casos_uso, campos_arquetipo):
+    """ETAPA 1: Generación del BORRADOR inicial"""
+    
+    keywords_str = ", ".join(keywords) if keywords else "No especificadas"
+    arquetipo_context = build_arquetipo_context(arquetipo['code'], campos_arquetipo)
+    
+    link_principal = links.get('principal', {})
+    links_secundarios = links.get('secundarios', [])
+    
+    link_info = ""
+    if link_principal.get('url'):
+        link_info = f"""
+# ENLACES A INCLUIR:
+## Enlace Principal (OBLIGATORIO):
+URL: {link_principal.get('url')}
+Texto anchor: {link_principal.get('text')}
+Ubicación: Primeros 2-3 párrafos
+"""
+    
+    if links_secundarios:
+        link_info += f"""
+## Enlaces Secundarios:
+{chr(10).join([f"- URL: {link.get('url')} | Texto: {link.get('text')}" for link in links_secundarios])}
+"""
+
+    alternativo_info = ""
+    if producto_alternativo.get('url'):
+        alternativo_info = f"""
+# PRODUCTO ALTERNATIVO:
+URL: {producto_alternativo.get('url')}
+Texto: {producto_alternativo.get('text', 'producto alternativo')}
+IMPORTANTE: Incluir en "Considera alternativas si:" con enlace.
+"""
+    else:
+        casos_uso_str = ""
+        if casos_uso:
+            casos_uso_str = f"\nCasos de uso:\n" + "\n".join([f"- {caso}" for caso in casos_uso])
+        alternativo_info = f"""
+# PRODUCTO ALTERNATIVO: NO CONFIGURADO
+Box veredicto solo con "✅ Perfecto si:" desarrollado extensamente.{casos_uso_str}
+"""
+
+    module_info = ""
+    if modules and len(modules) > 0:
+        module_info = f"""
+# MÓDULOS DE CONTENIDO ({len(modules)} configurados - TODOS OBLIGATORIOS):
+
+"""
+        
+        for idx, mod in enumerate(modules):
+            module_info += f"\n## Módulo {idx + 1}:\n"
+            
+            if mod['type'] == 'product':
+                module_info += f"""
+**Tipo:** Producto Destacado
+**Nombre:** {mod['nombre']}
+**Shortcode EXACTO CON ESPACIADO:**
+```html
+{mod['shortcode']}
+```
+"""
+            
+            elif mod['type'] == 'carousel':
+                module_info += f"""
+**Tipo:** Carrusel de Categoría
+**Categoría:** {mod['category_name']}
+**Shortcode EXACTO CON ESPACIADO:**
+```html
+{mod['shortcode']}
+```
+"""
+
+    prompt = f"""
+# TAREA: GENERACIÓN DE BORRADOR INICIAL (ETAPA 1/3)
+
+Eres experto redactor de PcComponentes para contenido optimizado Google Discover.
+
+Esta es la ETAPA 1: Genera un BORRADOR inicial del contenido.
+
+# OBJETIVO DEL CONTENIDO:
+{objetivo}
+
+# ARQUETIPO:
+{arquetipo['code']} - {arquetipo['name']}
+{arquetipo['description']}
+
+{arquetipo_context}
+
+# DATOS PRODUCTO:
+{json.dumps(pdp_data, indent=2, ensure_ascii=False) if pdp_data else "N/A"}
+
+# CONTEXTO:
+{context if context else "Condiciones estándar PcComponentes"}
+
+# KEYWORDS SEO:
+{keywords_str}
+
+{link_info}
+
+{alternativo_info}
+
+{module_info}
+
+# CONTROL ESTRICTO DE LONGITUD:
+
+**LONGITUD OBJETIVO: {target_length} palabras**
+
+CRÍTICO - CONTROL DE EXTENSIÓN:
+- Genera EXACTAMENTE entre {int(target_length * 0.95)} y {int(target_length * 1.05)} palabras
+- Cuenta palabras mientras escribes
+- Si te quedas corto, desarrolla más las secciones principales
+- Si te pasas, sé más conciso en descripciones
+
+# FORMATO OUTPUT - HTML PURO (NO MARKDOWN):
+
+Genera HTML puro y funcional. NO uses markdown. NO uses ``` de código.
+
+La estructura debe ser:
+
+<style>
+[CSS con paleta PcComponentes]
+</style>
+
+<article>
+[Contenido HTML completo]
+</article>
+
+# ELEMENTOS HTML PERMITIDOS:
+
+✅ <h1>, <h2>, <h3>
+✅ <p>, <strong>, <em>
+✅ <ul>, <ol>, <li>
+✅ <div class="...">
+✅ <a href="...">
+✅ Shortcodes de módulos (dentro de divs)
+
+❌ NO usar: **, ##, [], syntax markdown
+❌ NO usar: <script>, <iframe>
+
+# CSS - USA EXACTAMENTE ESTOS ESTILOS:
+
+<style>
+body {{
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #090029;
+  background-color: #FFFFFF;
+  line-height: 1.6;
+}}
+h1, h2, h3 {{
+  color: #170453;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+  font-weight: 800;
+}}
+h1 {{ font-size: 2em; }}
+h2 {{ font-size: 1.5em; }}
+h3 {{ font-size: 1.25em; }}
+.kicker {{
+  display: inline-block;
+  background-color: #C5C0D4;
+  color: #170453;
+  border: 1px solid #170453;
+  padding: 0.25em 0.6em;
+  margin-bottom: 0.8em;
+  font-size: 0.75em;
+  font-weight: 700;
+  border-radius: 999px;
+}}
+</style>
+
+# TONO DE MARCA PCCOMPONENTES:
+
+✅ HACER:
+- Enfoque aspiracional y positivo
+- "Perfecto si..." en lugar de "Evita si..."
+- Honestidad sin negatividad
+- Expertos sin pedantería
+
+❌ NO HACER:
+- Negatividad o desánimo
+- "Este producto no tiene X" → "Funciona con Y; si necesitas X, hay alternativas"
+- Lenguaje robótico o corporativo
+- Exceso de emojis (solo ✅ ⚡ en puntos clave)
+
+# VERIFICACIÓN FINAL ANTES DE ENTREGAR:
+
+1. ¿Tiene entre {int(target_length * 0.95)} y {int(target_length * 1.05)} palabras?
+2. ¿Es HTML puro (sin markdown)?
+3. ¿Incluye TODOS los módulos?
+4. ¿Los shortcodes están exactos (sin modificar)?
+5. ¿El tono es aspiracional?
+6. ¿Los enlaces están incluidos?
+
+GENERA AHORA EL BORRADOR INICIAL.
+Responde SOLO con el HTML (desde <style> hasta </article>).
+"""
+    
+    return prompt
+
+
+def build_correction_prompt_stage2(draft_content, target_length, arquetipo, objetivo):
+    """ETAPA 2: Análisis crítico y correcciones"""
+    
+    prompt = f"""
+# TAREA: ANÁLISIS CRÍTICO DEL BORRADOR (ETAPA 2/3)
+
+Eres editor senior de PcComponentes. Tu trabajo es CRITICAR el borrador y proponer CORRECCIONES específicas.
+
+# BORRADOR A ANALIZAR:
+
+{draft_content}
+
+# CONTEXTO:
+- Arquetipo: {arquetipo['code']} - {arquetipo['name']}
+- Objetivo: {objetivo}
+- Longitud objetivo: {target_length} palabras
+
+# TU TRABAJO:
+
+Analiza el borrador con OJO CRÍTICO y responde SOLO en formato JSON:
+
+{{
+  "longitud_actual": <número de palabras>,
+  "longitud_objetivo": {target_length},
+  "necesita_ajuste_longitud": true/false,
+  "problemas_encontrados": [
+    {{
+      "tipo": "longitud|estructura|tono|enlaces|modulos|seo",
+      "gravedad": "crítico|medio|menor",
+      "descripcion": "Descripción del problema",
+      "ubicacion": "Dónde está el problema",
+      "correccion_sugerida": "Cómo corregirlo"
+    }}
+  ],
+  "aspectos_positivos": [
+    "Qué está bien en el borrador"
+  ],
+  "instrucciones_revision": [
+    "Instrucciones específicas para la corrección final"
+  ],
+  "necesita_reescritura_completa": true/false
+}}
+
+# CRITERIOS DE EVALUACIÓN:
+
+1. **Longitud** (CRÍTICO):
+   - ¿Está en rango {int(target_length * 0.95)}-{int(target_length * 1.05)} palabras?
+   - Si no, ¿qué secciones ampliar o reducir?
+
+2. **HTML puro**:
+   - ¿Hay markdown (**, ##, [])? → CRÍTICO
+   - ¿Está bien formateado?
+
+3. **Módulos**:
+   - ¿Están TODOS los módulos?
+   - ¿Los shortcodes están exactos?
+   - ¿Tienen espaciado correcto?
+
+4. **Tono**:
+   - ¿Es aspiracional?
+   - ¿Evita negatividad?
+   - ¿Suena humano?
+
+5. **Estructura**:
+   - ¿Sigue el arquetipo?
+   - ¿Hay jerarquía HTML clara?
+
+6. **Enlaces**:
+   - ¿Están los enlaces obligatorios?
+   - ¿Están integrados naturalmente?
+
+7. **SEO**:
+   - ¿Keywords bien integradas?
+   - ¿Títulos optimizados?
+
+8. **Valor**:
+   - ¿Aporta información útil?
+   - ¿Ayuda a tomar decisiones?
+
+SÉ CRÍTICO. Encuentra 3-5 problemas reales.
+Responde SOLO con el JSON.
+"""
+    
+    return prompt
+
+
+def build_final_generation_prompt_stage3(draft_content, corrections_json, target_length):
+    """ETAPA 3: Generación final con correcciones aplicadas"""
+    
+    prompt = f"""
+# TAREA: GENERACIÓN FINAL CON CORRECCIONES (ETAPA 3/3)
+
+# BORRADOR INICIAL:
+{draft_content}
+
+# ANÁLISIS CRÍTICO Y CORRECCIONES:
+{corrections_json}
+
+# TU TRABAJO:
+
+Genera la VERSIÓN FINAL del contenido aplicando TODAS las correcciones indicadas.
+
+# INSTRUCCIONES CRÍTICAS:
+
+1. **Longitud**: DEBE estar en rango {int(target_length * 0.95)}-{int(target_length * 1.05)} palabras
+2. **HTML puro**: Elimina TODO el markdown si quedó alguno
+3. **Módulos**: Verifica que TODOS los shortcodes estén exactos
+4. **Correcciones**: Aplica TODAS las correcciones del JSON
+5. **Calidad**: Esta es la versión final - máxima calidad
+
+# VERIFICACIÓN FINAL:
+
+Antes de entregar, confirma:
+✅ Longitud correcta
+✅ HTML puro (sin markdown)
+✅ Todos los módulos presentes
+✅ Todas las correcciones aplicadas
+✅ Tono aspiracional
+✅ Enlaces incluidos
+✅ CSS completo
+
+GENERA AHORA LA VERSIÓN FINAL.
+Responde SOLO con el HTML completo (desde <style> hasta </article>).
+"""
+    
+    return prompt
 
 # ============================================================================
 # UI - RENDERIZADO DE CAMPOS ESPECÍFICOS Y MÓDULOS
@@ -1522,24 +2036,87 @@ Genera AHORA el contenido completo.
 # GENERATOR CLASS
 # ============================================================================
 
-class ContentGenerator:
-    """Generador con Claude API"""
+class ContentGeneratorV4:
+    """Generador con flujo de 3 etapas"""
     
     def __init__(self, api_key):
         self.client = anthropic.Anthropic(api_key=api_key)
     
-    def generate(self, prompt, max_tokens=8000):
-        """Llama a Claude API"""
+    def generate_stage(self, prompt, max_tokens=10000, stage_name=""):
+        """Llama a Claude API para una etapa"""
         try:
             message = self.client.messages.create(
                 model="claude-sonnet-4-20250514",
                 max_tokens=max_tokens,
                 messages=[{"role": "user", "content": prompt}]
             )
-            return message.content[0].text
+            result = message.content[0].text
+            return result
         except Exception as e:
-            st.error(f"Error en Claude API: {str(e)}")
+            st.error(f"Error en {stage_name}: {str(e)}")
             return None
+    
+    def generate_with_3_stages(self, pdp_data, arquetipo, target_length, keywords,
+                               context, links, modules, objetivo, producto_alternativo,
+                               casos_uso, campos_arquetipo, progress_callback=None):
+        """Flujo completo de generación en 3 etapas"""
+        
+        # ETAPA 1: Borrador inicial
+        if progress_callback:
+            progress_callback(0, "📝 Etapa 1/3: Generando borrador inicial...")
+        
+        prompt_draft = build_generation_prompt_stage1_draft(
+            pdp_data, arquetipo, target_length, keywords, context, links,
+            modules, objetivo, producto_alternativo, casos_uso, campos_arquetipo
+        )
+        
+        draft_content = self.generate_stage(prompt_draft, max_tokens=12000, stage_name="Borrador")
+        
+        if not draft_content:
+            return None, None, None
+        
+        # ETAPA 2: Análisis crítico
+        if progress_callback:
+            progress_callback(33, "🔍 Etapa 2/3: Análisis crítico y correcciones...")
+        
+        prompt_correction = build_correction_prompt_stage2(
+            draft_content, target_length, arquetipo, objetivo
+        )
+        
+        corrections_json = self.generate_stage(prompt_correction, max_tokens=4000, stage_name="Análisis")
+        
+        if not corrections_json:
+            return draft_content, None, None
+        
+        # ETAPA 3: Versión final
+        if progress_callback:
+            progress_callback(66, "✨ Etapa 3/3: Generando versión final...")
+        
+        prompt_final = build_final_generation_prompt_stage3(
+            draft_content, corrections_json, target_length
+        )
+        
+        final_content = self.generate_stage(prompt_final, max_tokens=12000, stage_name="Versión Final")
+        
+        if progress_callback:
+            progress_callback(100, "✅ Generación completada")
+        
+        return draft_content, corrections_json, final_content
+
+
+# ============================================================================
+# FUNCIONES AUXILIARES - FUERA DE LA CLASE ✅
+# ============================================================================
+
+def count_words_in_html(html_content):
+    """Cuenta palabras en HTML (excluyendo tags)"""
+    # Remover tags HTML
+    text = re.sub(r'<[^>]+>', '', html_content)
+    # Remover espacios extras
+    text = re.sub(r'\s+', ' ', text).strip()
+    # Contar palabras
+    words = len(text.split())
+    return words
 
 # ============================================================================
 # FUNCIÓN DE VERIFICACIÓN GSC
@@ -1656,11 +2233,12 @@ def render_sidebar():
         st.markdown("---")
         
         st.markdown("### 🆕 V3.1 + GSC")
-        st.markdown("✅ 12 arquetipos completos")
+        st.markdown("✅ 18 arquetipos completos")
         st.markdown("✅ Sistema dual de módulos")
         st.markdown("✅ Campos específicos por arquetipo")
         st.markdown("✅ Búsqueda de categorías")
         st.markdown("✅ Verificación GSC")
+        st.markdown("✅ Flujo 3 etapas")
         st.markdown("---")
         
         st.markdown("### Info")
@@ -1673,7 +2251,7 @@ def main():
     render_sidebar()
     
     st.title("Content Generator V3.1 + GSC")
-    st.markdown("12 Arquetipos + Sistema Dual de Módulos + Verificación GSC")
+    st.markdown("18 Arquetipos + Sistema Dual de Módulos + Verificación GSC + Flujo 3 Etapas")
     st.markdown("---")
     
     if 'ANTHROPIC_API_KEY' not in st.secrets:
@@ -1730,16 +2308,33 @@ def main():
     if not objetivo:
         st.warning("⚠️ El objetivo es obligatorio")
     
-    # Keywords (movidas aquí desde configuración avanzada)
+    # Keywords
     st.markdown("---")
-    keywords = st.text_input(
-        "Keywords SEO principales (separadas por comas)",
-        placeholder="robot aspirador xiaomi, oferta black friday",
-        help="Se verificará si ya existe contenido rankeando para estas keywords"
-    )
+    st.markdown("### 🔍 Keywords SEO")
     
-    # Verificación GSC (NUEVA SECCIÓN - sin separador porque es parte del flujo)
-    block_generation = render_gsc_verification_section(keywords)
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        keyword_principal = st.text_input(
+            "Keyword Principal (obligatoria)",
+            placeholder="robot aspirador xiaomi",
+            help="Se verificará si ya existe contenido rankeando para esta keyword"
+        )
+    
+    with col2:
+        keywords_secundarias = st.text_input(
+            "Keywords secundarias / Variaciones (separadas por comas)",
+            placeholder="aspirador inteligente, robot friegasuelos",
+            help="Keywords adicionales para optimización SEO"
+        )
+    
+    # Combinar keywords
+    keywords = keyword_principal
+    if keywords_secundarias:
+        keywords = f"{keyword_principal}, {keywords_secundarias}"
+    
+    # Verificación GSC
+    block_generation = render_gsc_verification_section(keyword_principal)
     
     # Campos específicos del arquetipo
     st.markdown("---")
@@ -1751,7 +2346,7 @@ def main():
     
     modules_data = render_module_configurator()
     
-    # SECCIÓN 4: Enlaces (AHORA VISIBLE)
+    # SECCIÓN 4: Enlaces
     st.markdown("---")
     st.header("4. Enlaces Internos")
     
@@ -1831,8 +2426,7 @@ def main():
     
     # Proceso de generación
     if generate:
-        
-        # Limpiar resultados GSC previos para nueva generación
+        # Limpiar resultados GSC previos
         if 'gsc_check_results' in st.session_state:
             del st.session_state['gsc_check_results']
         if 'last_checked_keyword' in st.session_state:
@@ -1867,33 +2461,53 @@ def main():
             "text": alternativo_text
         } if alternativo_url else {}
         
-        generator = ContentGenerator(st.secrets['ANTHROPIC_API_KEY'])
+        # ✅ USAR ContentGeneratorV4
+        generator = ContentGeneratorV4(st.secrets['ANTHROPIC_API_KEY'])
         
         progress = st.progress(0)
-        status = st.status("⏳ Generando contenido...", expanded=True)
+        status = st.status("⏳ Iniciando generación...", expanded=True)
         
-        status.write(f"📝 Generando contenido tipo '{arquetipo['name']}'...")
-        prompt_gen = build_generation_prompt_with_modules(
-            pdp_data, arquetipo, content_length,
-            keywords_list, context, links, modules_data, objetivo,
-            producto_alternativo, casos_uso, campos_arquetipo
+        def update_progress(percent, message):
+            progress.progress(percent)
+            status.write(message)
+        
+        # ✅ FLUJO DE 3 ETAPAS
+        draft, corrections, final = generator.generate_with_3_stages(
+            pdp_data=pdp_data,
+            arquetipo=arquetipo,
+            target_length=content_length,
+            keywords=keywords_list,
+            context=context,
+            links=links,
+            modules=modules_data,
+            objetivo=objetivo,
+            producto_alternativo=producto_alternativo,
+            casos_uso=casos_uso,
+            campos_arquetipo=campos_arquetipo,
+            progress_callback=update_progress
         )
         
-        final_content = generator.generate(prompt_gen)
-        if not final_content:
+        if not final:
             st.error("❌ Error en generación")
             st.stop()
         
+        final_content = final
         progress.progress(100)
-        status.update(label="✅ Completado", state="complete")
+        status.update(label="✅ Generación completada", state="complete")
         
         st.session_state.results = {
+            'draft': draft,
+            'corrections': corrections,
             'final': final_content,
             'metadata': {
                 'product_id': product_id or "N/A",
                 'arquetipo': arquetipo_code,
                 'objetivo': objetivo,
-                'keywords': keywords_list,
+                'keyword_principal': keyword_principal,
+                'keywords_secundarias': keywords_secundarias,
+                'longitud_objetivo': content_length,
+                'longitud_real': count_words_in_html(final_content),
+                'num_modulos': len(modules_data),
                 'campos_arquetipo': campos_arquetipo,
                 'modulos': modules_data,
                 'timestamp': datetime.now().isoformat()
@@ -1917,35 +2531,119 @@ def main():
                         else:
                             st.markdown(f"- 🎠 {mod['category_name']}")
             with col3:
-                st.markdown(f"**Alternativo:** {'✅' if producto_alternativo else '❌'}")
+                st.markdown(f"**Alternativo:** {'✅' if producto_alternativo.get('url') else '❌'}")
                 st.markdown(f"**Casos uso:** {len(casos_uso)}")
                 st.markdown(f"**Keywords:** {len(keywords_list)}")
         
-        st.markdown("### 📄 Contenido Final")
+        # ✅ TABS DE RESULTADOS
+        st.markdown("---")
+        st.markdown("## 📊 Resultados de la Generación")
         
-        with st.expander("👁️ Vista previa renderizada", expanded=True):
-            st.components.v1.html(final_content, height=800, scrolling=True)
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "📄 Versión Final",
+            "📝 Borrador",
+            "🔍 Análisis Crítico",
+            "📈 Métricas"
+        ])
         
-        with st.expander("</> Código HTML"):
-            st.code(final_content, language='html')
+        with tab1:
+            st.markdown("### 📄 Contenido Final")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Longitud objetivo", f"{content_length}")
+            with col2:
+                longitud_real = count_words_in_html(final_content)
+                st.metric("Longitud real", f"{longitud_real}")
+            with col3:
+                diferencia = longitud_real - content_length
+                st.metric("Diferencia", f"{diferencia:+d}")
+            with col4:
+                porcentaje = (longitud_real / content_length * 100) - 100
+                st.metric("Precisión", f"{porcentaje:+.1f}%")
+            
+            with st.expander("👁️ Vista previa renderizada", expanded=True):
+                st.components.v1.html(final_content, height=800, scrolling=True)
+            
+            with st.expander("</> Código HTML"):
+                st.code(final_content, language='html')
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.download_button(
+                    "⬇️ Descargar HTML",
+                    data=final_content,
+                    file_name=f"contenido_{arquetipo_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
+                    mime="text/html",
+                    use_container_width=True
+                )
+            with col2:
+                st.download_button(
+                    "⬇️ Descargar JSON completo",
+                    data=json.dumps(st.session_state.results, indent=2, ensure_ascii=False),
+                    file_name=f"generacion_{arquetipo_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json",
+                    use_container_width=True
+                )
         
-        col1, col2 = st.columns(2)
-        with col1:
-            st.download_button(
-                "⬇️ Descargar HTML",
-                data=final_content,
-                file_name=f"contenido_{arquetipo_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
-                mime="text/html",
-                use_container_width=True
-            )
-        with col2:
-            st.download_button(
-                "⬇️ Descargar JSON",
-                data=json.dumps(st.session_state.results, indent=2, ensure_ascii=False),
-                file_name=f"generacion_{arquetipo_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                mime="application/json",
-                use_container_width=True
-            )
+        with tab2:
+            st.markdown("### 📝 Borrador Inicial (Etapa 1)")
+            st.caption("Primera versión generada antes de la autocorrección")
+            
+            with st.expander("Ver borrador", expanded=False):
+                st.components.v1.html(draft, height=600, scrolling=True)
+        
+        with tab3:
+            st.markdown("### 🔍 Análisis Crítico (Etapa 2)")
+            st.caption("La IA analiza y sugiere correcciones")
+            
+            try:
+                corrections_data = json.loads(corrections)
+                
+                if 'problemas_encontrados' in corrections_data:
+                    st.markdown("#### ⚠️ Problemas Encontrados:")
+                    for prob in corrections_data['problemas_encontrados']:
+                        gravedad_emoji = {
+                            'crítico': '🔴',
+                            'medio': '🟡',
+                            'menor': '🟢'
+                        }.get(prob['gravedad'], '⚪')
+                        
+                        st.markdown(f"{gravedad_emoji} **{prob['tipo'].upper()}** ({prob['gravedad']})")
+                        st.markdown(f"- {prob['descripcion']}")
+                        st.markdown(f"- 📍 Ubicación: {prob['ubicacion']}")
+                        st.markdown(f"- ✅ Corrección: {prob['correccion_sugerida']}")
+                        st.markdown("---")
+                
+                if 'aspectos_positivos' in corrections_data:
+                    st.markdown("#### ✅ Aspectos Positivos:")
+                    for aspecto in corrections_data['aspectos_positivos']:
+                        st.markdown(f"- {aspecto}")
+                
+                with st.expander("Ver análisis JSON completo"):
+                    st.json(corrections_data)
+            
+            except:
+                st.code(corrections)
+        
+        with tab4:
+            st.markdown("### 📈 Métricas de Generación")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**Configuración:**")
+                st.markdown(f"- Arquetipo: {arquetipo['name']}")
+                st.markdown(f"- Keyword principal: {keyword_principal}")
+                st.markdown(f"- Módulos: {len(modules_data)}")
+                st.markdown(f"- Producto: {product_id or 'N/A'}")
+            
+            with col2:
+                st.markdown("**Resultados:**")
+                st.markdown(f"- Longitud: {count_words_in_html(final_content)} / {content_length} palabras")
+                st.markdown(f"- Precisión: {porcentaje:+.1f}%")
+                st.markdown(f"- Formato: HTML puro ✅")
+                st.markdown(f"- Módulos incluidos: {len(modules_data)}/{len(modules_data)} ✅")
 
 if __name__ == "__main__":
     main()
