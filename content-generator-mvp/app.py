@@ -861,19 +861,24 @@ def render_campos_especificos(arquetipo_data):
 
 def render_module_configurator():
     """
-    Renderiza la interfaz de configuración de módulos dual
+    Renderiza la interfaz de configuración de módulos - VERSIÓN MEJORADA
+    Con botones visuales para seleccionar tipo de módulo
     """
-    st.markdown("### 📦 Añadir Módulos de Contenido")
-    st.caption("Selecciona el tipo de módulo y configura sus parámetros")
+    st.markdown("### 📦 Módulos de Contenido")
     
     if 'modules_config' not in st.session_state:
         st.session_state.modules_config = []
     
+    # Instrucción si está vacío
+    if len(st.session_state.modules_config) == 0:
+        st.info("👉 Click en **'➕ Nuevo Módulo'** para añadir productos destacados o carruseles de categoría al contenido.")
+    
     categories_df = load_categories_data()
     
+    # Botón para añadir
     col1, col2, col3 = st.columns([1, 1, 2])
     with col1:
-        if st.button("➕ Añadir Módulo", key="add_module_btn"):
+        if st.button("➕ Nuevo Módulo", key="add_module_btn", type="primary"):
             st.session_state.modules_config.append({
                 'type': 'product',
                 'id': len(st.session_state.modules_config)
@@ -882,33 +887,85 @@ def render_module_configurator():
     
     with col2:
         if len(st.session_state.modules_config) > 0:
-            if st.button("➖ Quitar Último", key="remove_module_btn"):
-                st.session_state.modules_config.pop()
+            if st.button("🗑️ Borrar Todos", key="clear_all_btn"):
+                st.session_state.modules_config = []
                 st.rerun()
+    
+    with col3:
+        if len(st.session_state.modules_config) > 0:
+            st.caption(f"📊 {len(st.session_state.modules_config)} módulo(s)")
     
     modules_data = []
     
+    # Renderizar cada módulo
     for idx, module in enumerate(st.session_state.modules_config):
         st.markdown("---")
-        st.markdown(f"#### Módulo {idx + 1}")
         
-        module_type = st.selectbox(
-            "Tipo de módulo",
-            options=['product', 'carousel'],
-            format_func=lambda x: "🎯 Producto Destacado" if x == 'product' else "🎠 Carrusel de Categoría",
-            key=f"module_type_{idx}"
-        )
+        # Header del módulo
+        col_title, col_delete = st.columns([4, 1])
+        with col_title:
+            st.markdown(f"### 🔧 Módulo {idx + 1}")
+        with col_delete:
+            if st.button("❌", key=f"delete_{idx}", help="Eliminar este módulo"):
+                st.session_state.modules_config.pop(idx)
+                st.rerun()
         
-        module_data = {'type': module_type}
+        # SELECTOR DE TIPO CON BOTONES GRANDES Y VISUALES
+        st.markdown("**Selecciona el tipo de módulo:**")
         
-        if module_type == 'product':
+        col1, col2 = st.columns(2)
+        
+        current_type = module.get('type', 'product')
+        
+        with col1:
+            # Botón Producto
+            producto_selected = current_type == 'product'
+            if st.button(
+                "🎯 **Producto Destacado**",
+                key=f"type_product_{idx}",
+                use_container_width=True,
+                type="primary" if producto_selected else "secondary"
+            ):
+                if current_type != 'product':
+                    module['type'] = 'product'
+                    st.rerun()
+            
+            if producto_selected:
+                st.success("✅ Seleccionado")
+            st.caption("Destaca un producto por su ID")
+        
+        with col2:
+            # Botón Carrusel
+            carousel_selected = current_type == 'carousel'
+            if st.button(
+                "🎠 **Carrusel de Categoría**",
+                key=f"type_carousel_{idx}",
+                use_container_width=True,
+                type="primary" if carousel_selected else "secondary"
+            ):
+                if current_type != 'carousel':
+                    module['type'] = 'carousel'
+                    st.rerun()
+            
+            if carousel_selected:
+                st.success("✅ Seleccionado")
+            st.caption("Muestra productos de una categoría")
+        
+        module_data = {'type': current_type}
+        
+        st.markdown("---")
+        
+        # Configuración según tipo
+        if current_type == 'product':
+            st.markdown("#### ⚙️ Configuración del Producto Destacado")
+            
             col1, col2 = st.columns([2, 1])
             with col1:
                 article_id = st.text_input(
                     "ID del producto (articleId)",
                     key=f"product_id_{idx}",
                     placeholder="10848823",
-                    help="ID numérico del producto"
+                    help="ID numérico del producto en PcComponentes"
                 )
             with col2:
                 nombre = st.text_input(
@@ -923,12 +980,19 @@ def render_module_configurator():
                 module_data['shortcode'] = generate_product_module(article_id, nombre)
                 modules_data.append(module_data)
                 
-                with st.expander("👁️ Vista previa del shortcode", expanded=False):
+                st.success(f"✅ Configurado: {module_data['nombre']}")
+                
+                with st.expander("👁️ Vista previa del shortcode"):
                     st.code(module_data['shortcode'], language='text')
+            else:
+                st.warning("⚠️ Introduce el ID del producto")
         
-        elif module_type == 'carousel':
+        elif current_type == 'carousel':
+            st.markdown("#### ⚙️ Configuración del Carrusel de Categoría")
+            
+            # Paso 1: Idioma
             locale = st.selectbox(
-                "Idioma del catálogo",
+                "1️⃣ Idioma del catálogo",
                 options=['es_ES', 'pt_PT', 'de_DE', 'fr_FR', 'it_IT'],
                 format_func=lambda x: {
                     'es_ES': '🇪🇸 Español',
@@ -943,11 +1007,12 @@ def render_module_configurator():
             if categories_df is not None:
                 categories = get_categories_by_locale(categories_df, locale)
                 
+                # Paso 2: Búsqueda
                 search_term = st.text_input(
-                    "🔍 Buscar categoría",
+                    "2️⃣ Buscar categoría",
                     key=f"carousel_search_{idx}",
-                    placeholder="Escribe para buscar...",
-                    help="La búsqueda filtra las categorías"
+                    placeholder="Ej: robot, monitor, teclado...",
+                    help="Escribe para filtrar"
                 )
                 
                 filtered_categories = search_category(categories, search_term)
@@ -956,49 +1021,51 @@ def render_module_configurator():
                     category_names = [cat['name'] for cat in filtered_categories]
                     
                     selected_name = st.selectbox(
-                        "Categoría",
+                        f"3️⃣ Seleccionar ({len(filtered_categories)} categorías)",
                         options=category_names,
-                        key=f"carousel_category_{idx}",
-                        help=f"{len(filtered_categories)} categoría(s) en {locale}"
+                        key=f"carousel_category_{idx}"
                     )
                     
                     selected_category = next((cat for cat in filtered_categories if cat['name'] == selected_name), None)
                     
                     if selected_category:
-                        st.info(f"**Slug:** `{selected_category['name_slug']}`  \n**ID:** `{selected_category['category_id']}`")
+                        st.info(f"📂 {selected_name}")
                         
+                        st.markdown("**4️⃣ Parámetros del carrusel:**")
                         col1, col2 = st.columns(2)
                         
                         with col1:
-                            order = st.selectbox(
-                                "Orden de productos",
+                            order = st.radio(
+                                "Ordenar por",
                                 options=['relevance', 'price'],
-                                format_func=lambda x: "⭐ Por relevancia" if x == 'relevance' else "💰 Por precio",
-                                key=f"carousel_order_{idx}"
+                                format_func=lambda x: "⭐ Relevancia" if x == 'relevance' else "💰 Precio",
+                                key=f"carousel_order_{idx}",
+                                horizontal=True
                             )
                             
-                            navigation = st.selectbox(
-                                "Mostrar navegación",
+                            navigation = st.radio(
+                                "Navegación",
                                 options=['true', 'false'],
                                 format_func=lambda x: "✅ Sí" if x == 'true' else "❌ No",
-                                key=f"carousel_nav_{idx}"
+                                key=f"carousel_nav_{idx}",
+                                horizontal=True
                             )
                         
                         with col2:
-                            loop = st.selectbox(
-                                "Bucle infinito",
+                            loop = st.radio(
+                                "Bucle",
                                 options=['true', 'false'],
                                 format_func=lambda x: "🔄 Sí" if x == 'true' else "⏸️ No",
-                                key=f"carousel_loop_{idx}"
+                                key=f"carousel_loop_{idx}",
+                                horizontal=True
                             )
                             
-                            article_amount = st.number_input(
-                                "Cantidad de productos",
-                                min_value=1,
+                            article_amount = st.slider(
+                                "Cantidad",
+                                min_value=3,
                                 max_value=50,
                                 value=12,
-                                key=f"carousel_amount_{idx}",
-                                help="Productos a mostrar"
+                                key=f"carousel_amount_{idx}"
                             )
                         
                         module_data['category_name'] = selected_name
@@ -1020,29 +1087,32 @@ def render_module_configurator():
                         
                         modules_data.append(module_data)
                         
-                        with st.expander("👁️ Vista previa del shortcode", expanded=False):
+                        st.success(f"✅ Configurado: {selected_name} ({article_amount} productos)")
+                        
+                        with st.expander("👁️ Vista previa del shortcode"):
                             st.code(module_data['shortcode'], language='text')
                 else:
-                    st.warning(f"No se encontraron categorías para '{search_term}' en {locale}")
+                    if search_term:
+                        st.warning(f"No se encontraron categorías para '{search_term}'")
+                    else:
+                        st.info("👆 Escribe para buscar categorías")
             else:
                 st.error("❌ No se pudo cargar categorías")
     
+    # Resumen
     if len(modules_data) > 0:
         st.markdown("---")
-        st.success(f"✅ {len(modules_data)} módulo(s) configurado(s)")
+        st.success(f"🎉 {len(modules_data)} módulo(s) listo(s)")
         
-        with st.expander("📋 Resumen de módulos", expanded=False):
+        with st.expander("📋 Resumen", expanded=True):
             for idx, mod in enumerate(modules_data):
                 if mod['type'] == 'product':
-                    st.markdown(f"**{idx + 1}. Producto Destacado:** {mod['nombre']} (ID: {mod['article_id']})")
+                    st.markdown(f"**{idx + 1}.** 🎯 {mod['nombre']} (ID: {mod['article_id']})")
                 else:
-                    st.markdown(f"**{idx + 1}. Carrusel:** {mod['category_name']} ({mod['article_amount']} productos, orden: {mod['order']})")
+                    st.markdown(f"**{idx + 1}.** 🎠 {mod['category_name']} ({mod['article_amount']} productos)")
     
     return modules_data
 
-# ============================================================================
-# PROMPT BUILDERS
-# ============================================================================
 
 def build_arquetipo_context(arquetipo_code, campos_valores):
     """Construye contexto específico del arquetipo"""
