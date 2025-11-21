@@ -1,9 +1,10 @@
 """
 Content Generator - PcComponentes
-Versión 2.2 con mejoras:
-- Más arquetipos disponibles (incluyendo noticias)
-- Campos dinámicos específicos por arquetipo
-- Inputs contextuales según tipo de contenido
+Versión 3.0 COMPLETA
+- 12 arquetipos completos con todos sus campos específicos
+- Sistema Dual de Módulos (Producto + Carrusel)
+- Búsqueda incremental de categorías
+- Integración completa con CSV
 """
 
 import streamlit as st
@@ -11,6 +12,7 @@ import anthropic
 import requests
 import json
 import time
+import pandas as pd
 from datetime import datetime
 
 # ============================================================================
@@ -25,14 +27,39 @@ st.set_page_config(
 )
 
 # ============================================================================
+# CARGA DE DATOS DE CATEGORÍAS
+# ============================================================================
+
+@st.cache_data
+def load_categories_data():
+    """Carga el CSV de categorías"""
+    try:
+        df = pd.read_csv('/mnt/user-data/uploads/query_result_2025-11-21T11_57_22.csv', sep=';', encoding='utf-8-sig')
+        return df
+    except Exception as e:
+        st.error(f"Error cargando categorías: {str(e)}")
+        return None
+
+def get_categories_by_locale(df, locale):
+    """Obtiene categorías filtradas por idioma"""
+    if df is None:
+        return []
+    filtered = df[df['locale'] == locale]
+    return filtered.to_dict('records')
+
+def search_category(categories, search_term):
+    """Búsqueda incremental en categorías"""
+    if not search_term:
+        return categories
+    search_term = search_term.lower()
+    return [cat for cat in categories if search_term in cat['name'].lower()]
+
+# ============================================================================
 # SCRAPING N8N
 # ============================================================================
 
 def scrape_pdp_n8n(product_id):
-    """
-    Scrapea PDP usando webhook n8n
-    IMPORTANTE: Requiere estar conectado a VPN
-    """
+    """Scrapea PDP usando webhook n8n"""
     try:
         webhook_url = "https://n8n.prod.pccomponentes.com/webhook/extract-product-data"
         
@@ -611,7 +638,7 @@ CORRECTO: "Perfecto con mascotas estándar; con razas grandes de pelo largo, fun
 """
 
 # ============================================================================
-# EJEMPLOS DE REFERENCIA CSS
+# EJEMPLOS CSS
 # ============================================================================
 
 EJEMPLOS_CSS = """
@@ -759,13 +786,44 @@ h3 { font-size: 1.25em; }
 """
 
 # ============================================================================
-# FUNCIÓN PARA RENDERIZAR CAMPOS ESPECÍFICOS
+# GENERADORES DE SHORTCODES
+# ============================================================================
+
+def generate_product_module(article_id, nombre=""):
+    """Genera shortcode de producto destacado"""
+    return f'#MODULE_START#|{{"type":"article","params":{{"articleId":"{article_id}"}}}}|#MODULE_END#'
+
+def generate_carousel_module(slug, category_id, order, navigation, loop, article_amount):
+    """Genera shortcode de carrusel de categoría"""
+    shortcode = {
+        "type": "carouselArticle",
+        "params": {
+            "articlesIds": [],
+            "slug": slug,
+            "slugUuids": {
+                "categoryId": category_id
+            },
+            "order": order,
+            "articleAmount": article_amount,
+            "activityName": "",
+            "title": "",
+            "collection": {
+                "name": "",
+                "id": ""
+            },
+            "navigation": navigation == "true",
+            "loop": loop == "true"
+        }
+    }
+    return f"#MODULE_START#|{json.dumps(shortcode)}|#MODULE_END#"
+
+# ============================================================================
+# UI - RENDERIZADO DE CAMPOS ESPECÍFICOS Y MÓDULOS
 # ============================================================================
 
 def render_campos_especificos(arquetipo_data):
     """
     Renderiza campos de input específicos según el arquetipo seleccionado
-    Devuelve diccionario con los valores capturados
     """
     campos_especificos = arquetipo_data.get('campos_especificos', {})
     
@@ -801,18 +859,196 @@ def render_campos_especificos(arquetipo_data):
     
     return valores
 
+def render_module_configurator():
+    """
+    Renderiza la interfaz de configuración de módulos dual
+    """
+    st.markdown("### 📦 Añadir Módulos de Contenido")
+    st.caption("Selecciona el tipo de módulo y configura sus parámetros")
+    
+    if 'modules_config' not in st.session_state:
+        st.session_state.modules_config = []
+    
+    categories_df = load_categories_data()
+    
+    col1, col2, col3 = st.columns([1, 1, 2])
+    with col1:
+        if st.button("➕ Añadir Módulo", key="add_module_btn"):
+            st.session_state.modules_config.append({
+                'type': 'product',
+                'id': len(st.session_state.modules_config)
+            })
+            st.rerun()
+    
+    with col2:
+        if len(st.session_state.modules_config) > 0:
+            if st.button("➖ Quitar Último", key="remove_module_btn"):
+                st.session_state.modules_config.pop()
+                st.rerun()
+    
+    modules_data = []
+    
+    for idx, module in enumerate(st.session_state.modules_config):
+        st.markdown("---")
+        st.markdown(f"#### Módulo {idx + 1}")
+        
+        module_type = st.selectbox(
+            "Tipo de módulo",
+            options=['product', 'carousel'],
+            format_func=lambda x: "🎯 Producto Destacado" if x == 'product' else "🎠 Carrusel de Categoría",
+            key=f"module_type_{idx}"
+        )
+        
+        module_data = {'type': module_type}
+        
+        if module_type == 'product':
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                article_id = st.text_input(
+                    "ID del producto (articleId)",
+                    key=f"product_id_{idx}",
+                    placeholder="10848823",
+                    help="ID numérico del producto"
+                )
+            with col2:
+                nombre = st.text_input(
+                    "Nombre (opcional)",
+                    key=f"product_nombre_{idx}",
+                    placeholder="Ej: Xiaomi E5"
+                )
+            
+            if article_id:
+                module_data['article_id'] = article_id
+                module_data['nombre'] = nombre if nombre else f"Producto {idx + 1}"
+                module_data['shortcode'] = generate_product_module(article_id, nombre)
+                modules_data.append(module_data)
+                
+                with st.expander("👁️ Vista previa del shortcode", expanded=False):
+                    st.code(module_data['shortcode'], language='text')
+        
+        elif module_type == 'carousel':
+            locale = st.selectbox(
+                "Idioma del catálogo",
+                options=['es_ES', 'pt_PT', 'de_DE', 'fr_FR', 'it_IT'],
+                format_func=lambda x: {
+                    'es_ES': '🇪🇸 Español',
+                    'pt_PT': '🇵🇹 Portugués',
+                    'de_DE': '🇩🇪 Alemán',
+                    'fr_FR': '🇫🇷 Francés',
+                    'it_IT': '🇮🇹 Italiano'
+                }[x],
+                key=f"carousel_locale_{idx}"
+            )
+            
+            if categories_df is not None:
+                categories = get_categories_by_locale(categories_df, locale)
+                
+                search_term = st.text_input(
+                    "🔍 Buscar categoría",
+                    key=f"carousel_search_{idx}",
+                    placeholder="Escribe para buscar...",
+                    help="La búsqueda filtra las categorías"
+                )
+                
+                filtered_categories = search_category(categories, search_term)
+                
+                if len(filtered_categories) > 0:
+                    category_names = [cat['name'] for cat in filtered_categories]
+                    
+                    selected_name = st.selectbox(
+                        "Categoría",
+                        options=category_names,
+                        key=f"carousel_category_{idx}",
+                        help=f"{len(filtered_categories)} categoría(s) en {locale}"
+                    )
+                    
+                    selected_category = next((cat for cat in filtered_categories if cat['name'] == selected_name), None)
+                    
+                    if selected_category:
+                        st.info(f"**Slug:** `{selected_category['name_slug']}`  \n**ID:** `{selected_category['category_id']}`")
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            order = st.selectbox(
+                                "Orden de productos",
+                                options=['relevance', 'price'],
+                                format_func=lambda x: "⭐ Por relevancia" if x == 'relevance' else "💰 Por precio",
+                                key=f"carousel_order_{idx}"
+                            )
+                            
+                            navigation = st.selectbox(
+                                "Mostrar navegación",
+                                options=['true', 'false'],
+                                format_func=lambda x: "✅ Sí" if x == 'true' else "❌ No",
+                                key=f"carousel_nav_{idx}"
+                            )
+                        
+                        with col2:
+                            loop = st.selectbox(
+                                "Bucle infinito",
+                                options=['true', 'false'],
+                                format_func=lambda x: "🔄 Sí" if x == 'true' else "⏸️ No",
+                                key=f"carousel_loop_{idx}"
+                            )
+                            
+                            article_amount = st.number_input(
+                                "Cantidad de productos",
+                                min_value=1,
+                                max_value=50,
+                                value=12,
+                                key=f"carousel_amount_{idx}",
+                                help="Productos a mostrar"
+                            )
+                        
+                        module_data['category_name'] = selected_name
+                        module_data['slug'] = selected_category['name_slug']
+                        module_data['category_id'] = selected_category['category_id']
+                        module_data['order'] = order
+                        module_data['navigation'] = navigation
+                        module_data['loop'] = loop
+                        module_data['article_amount'] = article_amount
+                        module_data['locale'] = locale
+                        module_data['shortcode'] = generate_carousel_module(
+                            selected_category['name_slug'],
+                            selected_category['category_id'],
+                            order,
+                            navigation,
+                            loop,
+                            article_amount
+                        )
+                        
+                        modules_data.append(module_data)
+                        
+                        with st.expander("👁️ Vista previa del shortcode", expanded=False):
+                            st.code(module_data['shortcode'], language='text')
+                else:
+                    st.warning(f"No se encontraron categorías para '{search_term}' en {locale}")
+            else:
+                st.error("❌ No se pudo cargar categorías")
+    
+    if len(modules_data) > 0:
+        st.markdown("---")
+        st.success(f"✅ {len(modules_data)} módulo(s) configurado(s)")
+        
+        with st.expander("📋 Resumen de módulos", expanded=False):
+            for idx, mod in enumerate(modules_data):
+                if mod['type'] == 'product':
+                    st.markdown(f"**{idx + 1}. Producto Destacado:** {mod['nombre']} (ID: {mod['article_id']})")
+                else:
+                    st.markdown(f"**{idx + 1}. Carrusel:** {mod['category_name']} ({mod['article_amount']} productos, orden: {mod['order']})")
+    
+    return modules_data
+
 # ============================================================================
-# PROMPT BUILDER
+# PROMPT BUILDERS
 # ============================================================================
 
 def build_arquetipo_context(arquetipo_code, campos_valores):
-    """
-    Construye contexto específico del arquetipo para incluir en el prompt
-    """
+    """Construye contexto específico del arquetipo"""
     if not campos_valores:
         return ""
     
-    # Filtrar campos vacíos
     campos_llenos = {k: v for k, v in campos_valores.items() if v and v.strip()}
     
     if not campos_llenos:
@@ -821,217 +1057,12 @@ def build_arquetipo_context(arquetipo_code, campos_valores):
     context = f"\n# INFORMACIÓN ESPECÍFICA DEL ARQUETIPO {arquetipo_code}:\n\n"
     
     for campo_key, valor in campos_llenos.items():
-        # Convertir snake_case a Title Case para etiquetas
         label = campo_key.replace('_', ' ').title()
         context += f"**{label}:**\n{valor}\n\n"
     
-    context += "Usa esta información específica para crear un contenido altamente relevante y personalizado.\n"
+    context += "Usa esta información específica para crear contenido relevante.\n"
     
     return context
-
-def build_generation_prompt(pdp_data, arquetipo, length, keywords, context, links, modules, objetivo, producto_alternativo, casos_uso, campos_arquetipo):
-    """Construye prompt para generación inicial"""
-    
-    keywords_str = ", ".join(keywords) if keywords else "No especificadas"
-    
-    # Contexto específico del arquetipo
-    arquetipo_context = build_arquetipo_context(arquetipo['code'], campos_arquetipo)
-    
-    # Preparar información de enlaces
-    link_principal = links.get('principal', {})
-    links_secundarios = links.get('secundarios', [])
-    
-    link_info = ""
-    if link_principal.get('url'):
-        link_info = f"""
-# ENLACES A INCLUIR:
-
-## Enlace Principal (OBLIGATORIO):
-URL: {link_principal.get('url')}
-Texto anchor: {link_principal.get('text')}
-Ubicación: Debe aparecer en los primeros 2-3 párrafos del contenido, integrado naturalmente
-"""
-    
-    if links_secundarios:
-        link_info += f"""
-## Enlaces Secundarios Contextuales:
-{chr(10).join([f"- URL: {link.get('url')} | Texto: {link.get('text')}" for link in links_secundarios])}
-Ubicación: Integra naturalmente donde mejor encajen en el texto
-"""
-
-    # Preparar información de producto alternativo
-    alternativo_info = ""
-    if producto_alternativo.get('url'):
-        alternativo_info = f"""
-# PRODUCTO ALTERNATIVO (CONFIGURADO):
-
-URL Alternativa: {producto_alternativo.get('url')}
-Texto del producto: {producto_alternativo.get('text', 'producto alternativo')}
-
-IMPORTANTE: Dado que hay un producto alternativo configurado, el box de veredicto DEBE incluir:
-
-<div class="verdict-grid">
-<div class="verdict-item">
-<strong>✅ Perfecto si:</strong>
-<p class="why">[Beneficios clave del producto principal]</p>
-</div>
-<div class="verdict-item">
-<strong>Considera alternativas si:</strong>
-<p class="why">[Situaciones donde el producto alternativo puede ser mejor. Incluye enlace: <a href="{producto_alternativo.get('url')}" style="color: #FFFFFF; text-decoration: underline;">{producto_alternativo.get('text')}</a>]</p>
-</div>
-</div>
-"""
-    else:
-        # Si NO hay producto alternativo, solo "Perfecto si" expandido
-        casos_uso_str = ""
-        if casos_uso:
-            casos_uso_str = f"\nCasos de uso a mencionar:\n" + "\n".join([f"- {caso}" for caso in casos_uso])
-        
-        alternativo_info = f"""
-# PRODUCTO ALTERNATIVO (NO CONFIGURADO):
-
-IMPORTANTE: NO hay producto alternativo configurado, por lo tanto el box de veredicto DEBE ser:
-
-<div class="verdict-grid">
-<div class="verdict-item" style="grid-column: 1 / -1;">
-<strong>✅ Perfecto si:</strong>
-<p class="why">[Desarrolla EXTENSAMENTE los beneficios y casos de uso del producto. Debe ser detallado con múltiples escenarios donde el producto brilla.{casos_uso_str}]</p>
-</div>
-</div>
-
-NO incluyas sección "Considera alternativas si" ya que no hay producto alternativo configurado.
-"""
-
-    # Preparar información de módulos
-    module_info = ""
-    if modules:
-        module_info = f"""
-# MÓDULOS DE PRODUCTOS (OBLIGATORIOS SI CONFIGURADOS):
-
-Productos a destacar con módulos:
-{chr(10).join([f"- ID: {m['id']} (Nombre: {m.get('nombre', 'Sin nombre')})" for m in modules])}
-
-Formato EXACTO del módulo:
-#MODULE_START#|{{"type":"article","params":{{"articleId":"{modules[0]['id']}"}}}}|#MODULE_END#
-
-CRÍTICO sobre módulos:
-- Estos módulos DEBEN aparecer en el contenido final
-- Usa el formato EXACTO mostrado arriba
-- Ubicación típica: después de mencionar el producto o en secciones de análisis/comparativa
-- Cada módulo debe estar en su propia línea
-- NO modifiques el formato JSON del módulo
-- Si hay múltiples módulos, inclúyelos todos en ubicaciones estratégicas
-"""
-
-    prompt = f"""
-Eres un experto redactor de PcComponentes especializado en crear contenido optimizado para Google Discover.
-
-# OBJETIVO PRINCIPAL DEL CONTENIDO:
-{objetivo}
-
-# TONO DE MARCA PCCOMPONENTES:
-{BRAND_TONE}
-
-# ARQUETIPO SELECCIONADO:
-{arquetipo['code']} - {arquetipo['name']}
-Descripción: {arquetipo['description']}
-Caso de uso: {arquetipo['use_case']}
-
-{arquetipo_context}
-
-# DATOS DEL PRODUCTO (si aplica):
-{json.dumps(pdp_data, indent=2, ensure_ascii=False) if pdp_data else "N/A - Contenido no centrado en producto específico"}
-
-# CONTEXTO ADICIONAL:
-{context if context else "Condiciones estándar PcComponentes: envío gratis +50€, devoluciones extendidas"}
-
-# KEYWORDS SEO OBJETIVO:
-{keywords_str}
-
-# LONGITUD OBJETIVO:
-{length} palabras aproximadamente
-
-{link_info}
-
-{alternativo_info}
-
-{module_info}
-
-# INSTRUCCIONES CRÍTICAS DE REDACCIÓN:
-
-## 1. FORMATO DEL OUTPUT:
-
-Genera SOLO el artículo (desde <style> hasta </article>). 
-NO incluyas <html>, <head>, <body> ni nada externo al artículo.
-
-Estructura:
-
-{EJEMPLOS_CSS}
-
-<article>
-<span class="kicker">[Categoría]</span>
-<h2>[Título optimizado según arquetipo]</h2>
-
-<div class="badges">
-<span class="badge">[Info clave 1]</span>
-<span class="badge">[Info clave 2]</span>
-</div>
-
-[CONTENIDO ADAPTADO AL ARQUETIPO {arquetipo['code']}]
-
-[Si aplica: veredicto, callouts, tablas, módulos según tipo de contenido]
-
-<h2 id="faqs">Preguntas frecuentes</h2>
-[FAQs relevantes con H3 para cada pregunta]
-
-<script type="application/ld+json">
-{{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [...]
-}}
-</script>
-</article>
-
-## 2. ADAPTACIÓN AL ARQUETIPO {arquetipo['code']}:
-
-Sigue estas directrices específicas para {arquetipo['name']}:
-
-{get_arquetipo_guidelines(arquetipo['code'])}
-
-## 3. TONO ASPIRACIONAL (CRÍTICO):
-
-✅ SIEMPRE enfoca en beneficios y soluciones
-✅ Usa "Perfecto si..." 
-✅ Si hay producto alternativo: usa "Considera alternativas si..." con enlace
-✅ Si NO hay alternativo: desarrolla extensamente "Perfecto si" con múltiples casos de uso
-
-❌ PROHIBIDO lenguaje negativo que desanime
-❌ PROHIBIDO "evita", "no compres", "no recomendado"
-❌ PROHIBIDO tecnicismos sin explicar
-
-## 4. EMOJIS (SOLO ESTOS):
-
-✅ Para ventajas y puntos positivos
-⚡ Para urgencia, velocidad, destacar
-❌ SOLO en tablas comparativas técnicas (no para disuadir)
-
-## 5. ELEMENTOS OBLIGATORIOS:
-
-✅ Kicker con categoría
-✅ Título H2 (NO H1) con beneficio claro
-✅ Estructura adaptada al arquetipo
-✅ TOC navegable si contenido >1500 palabras
-✅ Callouts estratégicos
-✅ CTAs claros
-✅ FAQs al final
-✅ Schema JSON-LD válido
-✅ MÓDULOS de productos si están configurados
-
-Genera AHORA el contenido completo del artículo.
-"""
-    
-    return prompt
 
 def get_arquetipo_guidelines(arquetipo_code):
     """Devuelve directrices específicas de estructura para cada arquetipo"""
@@ -1041,44 +1072,43 @@ def get_arquetipo_guidelines(arquetipo_code):
 **Estructura Noticia:**
 1. Lead con las 5W (qué, quién, cuándo, dónde, por qué)
 2. Contexto y antecedentes
-3. Detalles específicos de la noticia
+3. Detalles específicos
 4. Implicaciones para usuarios
 5. Fuentes y referencias
 6. Conclusión con proyección futura
 
-**Tono:** Informativo, urgente si procede, neutral pero atractivo.
+**Tono:** Informativo, urgente si procede.
 """,
         "ARQ-2": """
-**Estructura Guía Paso a Paso:**
+**Estructura Guía:**
 1. Introducción: qué se va a conseguir
-2. Requisitos previos claramente listados
-3. Pasos numerados (3-10 pasos típicamente)
-4. Screenshots o descripciones detalladas de cada paso
-5. Avisos de puntos críticos en callouts
-6. Verificación final
-7. Troubleshooting común
+2. Requisitos previos listados
+3. Pasos numerados (3-10 típicamente)
+4. Avisos de puntos críticos en callouts
+5. Verificación final
+6. Troubleshooting común
 
-**Tono:** Instructivo, claro, paciente, sin asumir conocimientos.
+**Tono:** Instructivo, claro, paciente.
 """,
         "ARQ-3": """
 **Estructura Explicación:**
-1. Hook: por qué importa este concepto
+1. Hook: por qué importa
 2. Definición simple primero
 3. Explicación técnica progresiva
-4. Analogías y ejemplos prácticos
+4. Analogías y ejemplos
 5. Aplicaciones reales
 6. Comparaciones si aplica
-7. Conclusión con takeaway clave
+7. Takeaway clave
 
-**Tono:** Educativo pero accesible, experto sin pedantería.
+**Tono:** Educativo pero accesible.
 """,
         "ARQ-4": """
 **Estructura Review:**
 1. Veredicto rápido
-2. Contexto (precio, competencia, momento)
+2. Contexto (precio, competencia)
 3. Diseño y construcción
 4. Rendimiento con datos reales
-5. Experiencia de uso diario
+5. Experiencia de uso
 6. Comparativa con competencia
 7. FAQs
 8. Veredicto final
@@ -1086,226 +1116,281 @@ def get_arquetipo_guidelines(arquetipo_code):
 **Tono:** Experto, honesto, equilibrado.
 """,
         "ARQ-5": """
-**Estructura Comparativa A vs B:**
-1. Intro: por qué comparar estos dos
-2. Tabla comparativa visual al inicio
+**Estructura Comparativa:**
+1. Intro: por qué comparar
+2. Tabla comparativa visual
 3. Análisis Producto A
 4. Análisis Producto B
-5. Comparación directa por categorías
-6. Veredicto: cuál elegir según perfil
-7. Conclusión con recomendación clara
+5. Comparación por categorías
+6. Veredicto: cuál elegir
+7. Conclusión con recomendación
 
-**Tono:** Imparcial, analítico, útil para decisión.
+**Tono:** Imparcial, analítico.
 """,
         "ARQ-6": """
 **Estructura Deal Alert:**
-1. Hook con precio y ahorro EN MAYÚSCULAS o negrita
-2. Por qué es chollo (precio histórico, etc.)
-3. Características clave del producto
+1. Hook con precio en negrita
+2. Por qué es chollo
+3. Características clave
 4. Para quién es perfecto
-5. Duración de oferta y stock
-6. CTA urgente y directo
+5. Duración y stock
+6. CTA urgente
 7. Alternativas si se agota
 
-**Tono:** Urgente, directo, sin rodeos, enfocado en valor.
+**Tono:** Urgente, directo.
 """,
         "ARQ-7": """
 **Estructura Roundup:**
 1. Criterios de selección
-2. Ganador absoluto (si lo hay) destacado
-3. Producto #1 con análisis
-4. Producto #2-N con análisis
-5. Tabla comparativa completa
-6. Guía de compra: cómo elegir
-7. Conclusión y recomendación por perfil
+2. Ganador destacado si lo hay
+3. Producto #1-N con análisis
+4. Tabla comparativa completa
+5. Guía de compra
+6. Conclusión por perfil
 
-**Tono:** Autoridad, comprehensivo, útil para comparar.
+**Tono:** Autoridad, comprehensivo.
 """,
         "ARQ-8": """
 **Estructura Por Presupuesto:**
-1. Qué esperar en este rango de precio
-2. Mejor opción del rango (destacada)
+1. Qué esperar en este rango
+2. Mejor opción destacada
 3. Alternativas en el rango
-4. Qué sacrificas vs rangos superiores (en positivo)
-5. Tabla comparativa rápida
-6. Consejos para maximizar presupuesto
-7. Conclusión: merece la pena o esperar
+4. Qué sacrificas vs superiores (positivo)
+5. Tabla comparativa
+6. Consejos para maximizar
+7. Conclusión
 
-**Tono:** Realista, honesto, optimista dentro del presupuesto.
+**Tono:** Realista, honesto, optimista.
 """,
         "ARQ-9": """
 **Estructura Versus:**
 1. Presentación de contendientes
-2. Round 1: Categoría A (ganador + razón)
-3. Round 2: Categoría B (ganador + razón)
-4. Round N: Categoría N (ganador + razón)
-5. Tabla puntuación final
-6. Ganador absoluto y por qué
-7. Cuándo elegir al perdedor
+2. Round 1-N por categoría
+3. Tabla puntuación final
+4. Ganador absoluto y por qué
+5. Cuándo elegir al perdedor
 
-**Tono:** Deportivo, entretenido, riguroso en datos.
+**Tono:** Deportivo, entretenido, riguroso.
 """,
         "ARQ-10": """
 **Estructura Por Perfil:**
-1. Definición del perfil de usuario
-2. Necesidades específicas del perfil
-3. Producto recomendado y por qué encaja
-4. Características clave para este perfil
-5. Qué NO necesita este perfil (ahorro)
-6. Alternativas si perfil varía ligeramente
+1. Definición del perfil
+2. Necesidades específicas
+3. Producto recomendado y por qué
+4. Características clave
+5. Qué NO necesita (ahorro)
+6. Alternativas si varía
 7. Conclusión personalizada
 
-**Tono:** Empático, personalizado, consultivo.
+**Tono:** Empático, consultivo.
 """,
         "ARQ-11": """
 **Estructura Tendencias:**
-1. Contexto: situación actual del mercado
-2. Tendencia observada con datos
-3. Causas de la tendencia
+1. Contexto: situación actual
+2. Tendencia con datos
+3. Causas
 4. Predicción de evolución
 5. Impacto para consumidores
 6. Recomendaciones prácticas
-7. Conclusión: qué hacer ahora
+7. Qué hacer ahora
 
-**Tono:** Analítico, con autoridad, prospectivo.
+**Tono:** Analítico, con autoridad.
 """,
         "ARQ-12": """
 **Estructura Unboxing:**
-1. Primera impresión de la caja/packaging
-2. Contenido completo listado
-3. Construcción y materiales al tacto
+1. Primera impresión caja/packaging
+2. Contenido completo
+3. Construcción y materiales
 4. Sorpresas positivas
-5. Decepciones (si las hay, en tono neutro)
-6. Setup inicial: facilidad y tiempo
+5. Decepciones (neutral)
+6. Setup inicial
 7. Primeras horas de uso
 8. Veredicto preliminar
 
-**Tono:** Entusiasta, descriptivo, honesto, cercano.
+**Tono:** Entusiasta, descriptivo, honesto.
 """
     }
     
-    return guidelines.get(arquetipo_code, "Sigue las mejores prácticas del arquetipo seleccionado.")
+    return guidelines.get(arquetipo_code, "Sigue mejores prácticas del arquetipo.")
 
-def build_correction_prompt(content, objetivo):
-    """Construye prompt para corrección crítica"""
+def build_generation_prompt_with_modules(pdp_data, arquetipo, length, keywords, context, 
+                                          links, modules, objetivo, producto_alternativo, casos_uso, campos_arquetipo):
+    """Construye prompt completo para generación incluyendo módulos"""
     
+    keywords_str = ", ".join(keywords) if keywords else "No especificadas"
+    
+    # Contexto del arquetipo
+    arquetipo_context = build_arquetipo_context(arquetipo['code'], campos_arquetipo)
+    
+    # Enlaces
+    link_principal = links.get('principal', {})
+    links_secundarios = links.get('secundarios', [])
+    
+    link_info = ""
+    if link_principal.get('url'):
+        link_info = f"""
+# ENLACES A INCLUIR:
+## Enlace Principal (OBLIGATORIO):
+URL: {link_principal.get('url')}
+Texto anchor: {link_principal.get('text')}
+Ubicación: Primeros 2-3 párrafos
+"""
+    
+    if links_secundarios:
+        link_info += f"""
+## Enlaces Secundarios:
+{chr(10).join([f"- URL: {link.get('url')} | Texto: {link.get('text')}" for link in links_secundarios])}
+"""
+
+    # Producto alternativo
+    alternativo_info = ""
+    if producto_alternativo.get('url'):
+        alternativo_info = f"""
+# PRODUCTO ALTERNATIVO:
+URL: {producto_alternativo.get('url')}
+Texto: {producto_alternativo.get('text', 'producto alternativo')}
+IMPORTANTE: Incluir en "Considera alternativas si:" con enlace.
+"""
+    else:
+        casos_uso_str = ""
+        if casos_uso:
+            casos_uso_str = f"\nCasos de uso:\n" + "\n".join([f"- {caso}" for caso in casos_uso])
+        alternativo_info = f"""
+# PRODUCTO ALTERNATIVO: NO CONFIGURADO
+Box veredicto solo con "✅ Perfecto si:" desarrollado extensamente.{casos_uso_str}
+"""
+
+    # Módulos
+    module_info = ""
+    if modules and len(modules) > 0:
+        module_info = f"""
+# MÓDULOS DE CONTENIDO (CRÍTICO - DEBEN APARECER TODOS):
+
+{len(modules)} módulo(s) configurado(s) que DEBEN incluirse.
+
+"""
+        
+        for idx, mod in enumerate(modules):
+            module_info += f"\n## Módulo {idx + 1}:\n"
+            
+            if mod['type'] == 'product':
+                module_info += f"""
+**Tipo:** Producto Destacado
+**ID:** {mod['article_id']}
+**Nombre:** {mod['nombre']}
+**Shortcode EXACTO:**
+```
+{mod['shortcode']}
+```
+**Ubicación:** Después de mencionar el producto o en análisis.
+"""
+            
+            elif mod['type'] == 'carousel':
+                module_info += f"""
+**Tipo:** Carrusel de Categoría
+**Categoría:** {mod['category_name']}
+**Idioma:** {mod['locale']}
+**Cantidad:** {mod['article_amount']} productos
+**Orden:** {"Por relevancia" if mod['order'] == 'relevance' else "Por precio"}
+
+**Shortcode EXACTO:**
+```
+{mod['shortcode']}
+```
+**Ubicación:** Secciones de alternativas, exploración o al final antes de FAQs.
+**Contexto:** Muestra automáticamente {mod['article_amount']} productos de "{mod['category_name']}" ordenados por {mod['order']}.
+"""
+        
+        module_info += """
+
+**CRÍTICO SOBRE MÓDULOS:**
+1. TODOS deben aparecer en el contenido
+2. Usa shortcode EXACTO (no modificar JSON)
+3. Cada módulo en su propia línea
+4. Decide ubicación óptima por contexto
+5. Añade 1-2 frases antes del módulo explicando qué verá el usuario
+6. NO uses marcadores - usa shortcodes reales
+
+**Ejemplo de integración:**
+```
+Si buscas alternativas, aquí tienes más opciones:
+
+#MODULE_START#|{"type":"carouselArticle",...}|#MODULE_END#
+
+Todos comparten características similares.
+```
+"""
+
     prompt = f"""
-Eres un editor senior de PcComponentes. Analiza este contenido con mirada crítica profesional.
+Eres experto redactor de PcComponentes para contenido optimizado Google Discover.
 
 # OBJETIVO DEL CONTENIDO:
 {objetivo}
 
-# CONTENIDO A REVISAR:
-{content}
+# TONO DE MARCA:
+{BRAND_TONE}
 
-# CRITERIOS DE CORRECCIÓN CRÍTICA:
+# ARQUETIPO:
+{arquetipo['code']} - {arquetipo['name']}
+{arquetipo['description']}
+Caso de uso: {arquetipo['use_case']}
 
-## 1. Alineación con objetivo:
-- ¿Cumple el objetivo establecido?
-- ¿Hay desviaciones innecesarias?
-- ¿El enfoque es el correcto?
+{arquetipo_context}
 
-## 2. Adaptación al arquetipo:
-- ¿Sigue la estructura específica del arquetipo?
-- ¿Usa el tono apropiado?
-- ¿Los elementos clave del arquetipo están presentes?
+# DATOS PRODUCTO (si aplica):
+{json.dumps(pdp_data, indent=2, ensure_ascii=False) if pdp_data else "N/A"}
 
-## 3. Información específica del arquetipo:
-- ¿Se han usado los datos específicos proporcionados?
-- ¿Están bien integrados en el contenido?
-- ¿Falta alguna información clave solicitada?
+# CONTEXTO:
+{context if context else "Condiciones estándar PcComponentes"}
 
-## 4. Tono aspiracional (CRÍTICO):
-- ¿Se usa lenguaje negativo o disuasorio?
-- ¿Las limitaciones tienen contexto útil?
-- ¿Se enfoca en soluciones y beneficios?
+# KEYWORDS SEO:
+{keywords_str}
 
-## 5. Emojis:
-- ¿Solo usa ✅ ⚡ ❌?
-- ¿Están bien utilizados según las reglas?
+# LONGITUD:
+{length} palabras aproximadamente
 
-## 6. Enlaces:
-- ¿Enlace principal en primeros párrafos?
-- ¿Enlaces secundarios bien integrados?
-- ¿Producto alternativo presente si configurado?
-- ¿Anchor text descriptivo?
+{link_info}
 
-## 7. Módulos de productos:
-- ¿Aparecen TODOS los módulos configurados?
-- ¿Formato EXACTO correcto?
-- ¿Ubicación estratégica?
+{alternativo_info}
 
-## 8. Estructura técnica:
-- ¿CSS correcto con paleta PcComponentes?
-- ¿TOC con anchors si aplica?
-- ¿Schema JSON-LD válido?
+{module_info}
 
-## 9. Optimización Discover:
-- ¿Título atractivo?
-- ¿Hook emocional?
-- ¿Elementos visuales?
-- ¿Datos específicos?
+# FORMATO OUTPUT:
 
-# PROPORCIONA:
+Genera SOLO el artículo (desde <style> hasta </article>).
 
-## Resumen ejecutivo:
-[3-4 líneas sobre estado general]
+{EJEMPLOS_CSS}
 
-## Correcciones CRÍTICAS (obligatorias):
-[Lista numerada de cambios NECESARIOS]
+<article>
+[CONTENIDO COMPLETO]
+</article>
 
-## Sugerencias de mejora (opcionales):
-[Optimizaciones adicionales]
+# ADAPTACIÓN AL ARQUETIPO {arquetipo['code']}:
 
-## Alineación con objetivo:
-[¿Cumple? ¿Ajustes necesarios?]
+{get_arquetipo_guidelines(arquetipo['code'])}
 
-## Verificación arquetipo:
-[¿Estructura y tono correctos?]
+# ELEMENTOS OBLIGATORIOS:
 
-## Verificación de módulos:
-[¿Presentes todos? ¿Formato correcto?]
+✅ Kicker con categoría
+✅ Título H2 optimizado
+✅ Estructura arquetipo {arquetipo['code']}
+✅ Enlaces integrados
+✅ TODOS los módulos con shortcodes exactos
+✅ Tono aspiracional
+✅ Emojis: solo ✅ ⚡ ❌
+✅ FAQs con schema JSON-LD
 
-Sé específico, directo y enfócate en mejoras de alto impacto.
-"""
-    
-    return prompt
-
-def build_final_prompt(initial_content, corrections):
-    """Construye prompt para versión final"""
-    
-    prompt = f"""
-Genera la versión FINAL del contenido aplicando TODAS las correcciones críticas.
-
-# CONTENIDO INICIAL:
-{initial_content}
-
-# CORRECCIONES CRÍTICAS A APLICAR:
-{corrections}
-
-# INSTRUCCIONES:
-
-1. Aplica TODAS las correcciones mencionadas como críticas
-2. Mantén la estructura completa del artículo (desde <style> hasta </article>)
-3. Asegura tono aspiracional en todo el contenido
-4. Verifica que TODOS los elementos obligatorios están presentes
-5. CRÍTICO: Verifica que TODOS los módulos configurados aparecen con formato EXACTO
-6. Asegura que la estructura del arquetipo se mantiene correcta
-7. Optimiza para máximo impacto y conversión
-
-IMPORTANTE: El output debe ser el artículo completo corregido, listo para publicar.
-
-Genera el artículo final AHORA.
+Genera AHORA el contenido completo.
 """
     
     return prompt
 
 # ============================================================================
-# GENERADOR
+# GENERATOR CLASS
 # ============================================================================
 
 class ContentGenerator:
-    """Generador con corrección crítica"""
+    """Generador con Claude API"""
     
     def __init__(self, api_key):
         self.client = anthropic.Anthropic(api_key=api_key)
@@ -1324,7 +1409,7 @@ class ContentGenerator:
             return None
 
 # ============================================================================
-# UI
+# UI PRINCIPAL
 # ============================================================================
 
 def render_sidebar():
@@ -1334,51 +1419,46 @@ def render_sidebar():
         st.markdown("**PcComponentes**")
         st.markdown("---")
         
-        st.markdown("### 🆕 V2.2 Features")
-        st.markdown("✅ 12 arquetipos disponibles")
-        st.markdown("✅ Campos dinámicos por tipo")
-        st.markdown("✅ Arquetipos Noticias, Guías, Deal Alerts, Versus...")
+        st.markdown("### 🆕 V3.0 COMPLETA")
+        st.markdown("✅ 12 arquetipos completos")
+        st.markdown("✅ Sistema dual de módulos")
+        st.markdown("✅ Campos específicos por arquetipo")
+        st.markdown("✅ Búsqueda de categorías")
         st.markdown("---")
         
-        st.markdown("### Recursos")
-        st.markdown("[Guía arquetipos](#)")
-        st.markdown("[Manual tono](#)")
-        st.markdown("---")
         st.markdown("### Info")
-        st.markdown("Versión 2.2")
-        st.markdown("© 2025")
+        st.markdown("Versión 3.0 COMPLETA")
+        st.markdown("© 2025 PcComponentes")
 
 def main():
     """App principal"""
     
     render_sidebar()
     
-    # Header
-    st.title("Content Generator V2.2")
-    st.markdown("Genera contenido optimizado para Google Discover con 12 arquetipos especializados")
+    st.title("Content Generator V3.0 COMPLETA")
+    st.markdown("12 Arquetipos + Sistema Dual de Módulos (Producto + Carrusel)")
     st.markdown("---")
     
-    # Verificar API key
     if 'ANTHROPIC_API_KEY' not in st.secrets:
         st.error("Configura ANTHROPIC_API_KEY en secrets")
         st.stop()
     
-    # SECCIÓN 1: Producto (opcional para algunos arquetipos)
-    st.header("1. Producto (Opcional para algunos arquetipos)")
+    # SECCIÓN 1: Producto
+    st.header("1. Producto Principal (Opcional)")
     
     col1, col2 = st.columns([3, 1])
     
     with col1:
         product_id = st.text_input(
             "ID del producto",
-            placeholder="10848823 (dejar vacío si arquetipo no requiere producto específico)",
-            help="ID numérico del producto en PcComponentes"
+            placeholder="10848823 (opcional según arquetipo)",
+            help="ID numérico del producto"
         )
     
     with col2:
         use_mock = st.checkbox("Datos ejemplo", value=True, help="Testing sin VPN")
     
-    # SECCIÓN 2: Arquetipo y configuración
+    # SECCIÓN 2: Arquetipo
     st.header("2. Tipo de Contenido")
     
     col1, col2 = st.columns(2)
@@ -1391,7 +1471,7 @@ def main():
         )
         arquetipo = ARQUETIPOS[arquetipo_code]
         
-        st.info(f"**{arquetipo['name']}**\n\n{arquetipo['description']}\n\n*Caso de uso:* {arquetipo['use_case']}")
+        st.info(f"**{arquetipo['name']}**\n\n{arquetipo['description']}\n\n*Uso:* {arquetipo['use_case']}")
     
     with col2:
         content_length = st.slider(
@@ -1402,79 +1482,66 @@ def main():
             step=100
         )
     
-    # Objetivo del contenido (CRÍTICO)
+    # Objetivo
     objetivo = st.text_area(
         "Objetivo del contenido (OBLIGATORIO)",
-        placeholder="Ej: Convertir usuarios indecisos en compradores destacando el precio histórico y urgencia Black Friday.",
-        help="Describe qué quieres lograr. La IA usará esto para corrección crítica",
+        placeholder="Ej: Convertir usuarios destacando precio histórico",
+        help="Describe qué quieres lograr",
         height=100
     )
     
     if not objetivo:
-        st.warning("⚠️ El objetivo del contenido es obligatorio")
+        st.warning("⚠️ El objetivo es obligatorio")
     
-    # CAMPOS ESPECÍFICOS DEL ARQUETIPO (DINÁMICOS)
+    # Campos específicos del arquetipo
     st.markdown("---")
     campos_arquetipo = render_campos_especificos(arquetipo)
     
-    # SECCIÓN 3: Configuración avanzada
+    # SECCIÓN 3: Módulos
+    st.markdown("---")
+    st.header("3. Módulos de Contenido")
+    
+    modules_data = render_module_configurator()
+    
+    # SECCIÓN 4: Configuración avanzada
     with st.expander("⚙️ Configuración Avanzada", expanded=False):
         
-        # Keywords
         keywords = st.text_input(
             "Keywords SEO (separadas por comas)",
-            placeholder="robot aspirador xiaomi, oferta black friday"
+            placeholder="robot aspirador, oferta"
         )
         
-        # Contexto
         context = st.text_area(
             "Contexto adicional",
-            placeholder="Stock limitado 50 unidades, válido hasta 30/11, envío express gratis...",
+            placeholder="Stock limitado, válido hasta...",
             height=80
         )
         
         st.markdown("---")
-        
-        # Producto Alternativo (OPCIONAL)
-        st.markdown("### 🔄 Producto Alternativo (Opcional)")
-        st.caption("Si configuras un producto alternativo, aparecerá en 'Considera alternativas si...'")
+        st.markdown("### 🔄 Producto Alternativo")
         
         col1, col2 = st.columns(2)
         with col1:
-            alternativo_url = st.text_input(
-                "URL producto alternativo",
-                help="Aparecerá en 'Considera alternativas si...'"
-            )
+            alternativo_url = st.text_input("URL producto alternativo")
         with col2:
-            alternativo_text = st.text_input(
-                "Texto del producto alternativo",
-                placeholder="Ej: Roborock S7",
-                help="Nombre descriptivo del producto"
-            )
+            alternativo_text = st.text_input("Texto", placeholder="Ej: Roborock S7")
         
-        # Casos de uso (OPCIONAL)
-        st.markdown("### 📋 Casos de Uso (Opcional)")
-        st.caption("Define casos de uso específicos para 'Perfecto si...' (uno por línea)")
-        
+        st.markdown("### 📋 Casos de Uso")
         casos_uso_text = st.text_area(
-            "Casos de uso",
-            placeholder="Tienes un piso pequeño-mediano (hasta 80m²)\nBuscas limpieza diaria de mantenimiento\nTienes mascotas que sueltan pelo\nQuieres control desde el móvil",
-            help="Cada línea será un caso de uso diferente",
+            "Casos de uso (uno por línea)",
+            placeholder="Pisos pequeños\nMantenimiento diario",
             height=100
         )
-        
         casos_uso = [caso.strip() for caso in casos_uso_text.split('\n') if caso.strip()] if casos_uso_text else []
         
         st.markdown("---")
-        
-        # Enlaces
         st.markdown("### 🔗 Enlaces")
         
         col1, col2 = st.columns(2)
         with col1:
-            link_principal_url = st.text_input("URL enlace principal", help="Aparecerá en primeros párrafos")
+            link_principal_url = st.text_input("URL enlace principal")
         with col2:
-            link_principal_text = st.text_input("Texto enlace principal", help="Anchor text descriptivo")
+            link_principal_text = st.text_input("Texto enlace principal")
         
         st.markdown("**Enlaces secundarios** (hasta 3)")
         links_secundarios = []
@@ -1487,54 +1554,6 @@ def main():
             
             if url and text:
                 links_secundarios.append({"url": url, "text": text})
-        
-        st.markdown("---")
-        
-        # Módulos de productos (DINÁMICO)
-        st.markdown("### 📦 Añadir Productos Destacados")
-        st.caption("Los módulos aparecerán SIEMPRE en el contenido si completas el ID")
-        
-        # Inicializar estado para módulos si no existe
-        if 'num_modules' not in st.session_state:
-            st.session_state.num_modules = 1
-        
-        modules = []
-        for i in range(st.session_state.num_modules):
-            col1, col2 = st.columns([2, 1])
-            with col1:
-                module_id = st.text_input(
-                    f"ID producto destacado {i+1}",
-                    key=f"module_id_{i}",
-                    help="articleId del producto"
-                )
-            with col2:
-                module_nombre = st.text_input(
-                    f"Nombre (opcional)",
-                    key=f"module_nombre_{i}",
-                    placeholder="Ej: Xiaomi E5"
-                )
-            
-            if module_id:
-                modules.append({
-                    "id": module_id,
-                    "nombre": module_nombre if module_nombre else f"Producto {i+1}"
-                })
-        
-        # Botones para añadir/quitar módulos
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("➕ Añadir módulo", key="add_module"):
-                st.session_state.num_modules += 1
-                st.rerun()
-        
-        with col2:
-            if st.session_state.num_modules > 1:
-                if st.button("➖ Quitar último", key="remove_module"):
-                    st.session_state.num_modules -= 1
-                    st.rerun()
-        
-        if modules:
-            st.success(f"✅ {len(modules)} módulo(s) configurado(s) - Aparecerán en el contenido")
     
     # Botón generar
     st.markdown("---")
@@ -1551,23 +1570,21 @@ def main():
     # Proceso de generación
     if generate:
         
-        # Obtener datos PDP (si se requiere producto)
         pdp_data = None
         if product_id:
             if use_mock:
                 pdp_data = get_mock_pdp_data(product_id)
-                st.info("ℹ️ Usando datos de ejemplo (activa VPN para datos reales)")
+                st.info("ℹ️ Usando datos de ejemplo")
             else:
-                with st.spinner("🔄 Conectando al webhook n8n (requiere VPN)..."):
+                with st.spinner("🔄 Conectando al webhook n8n..."):
                     pdp_data = scrape_pdp_n8n(product_id)
                 
                 if not pdp_data:
-                    st.error("❌ No se pudieron obtener datos del producto. Verifica VPN y product ID.")
+                    st.error("❌ Error obteniendo datos")
                     st.stop()
                 
-                st.success("✅ Datos del producto obtenidos correctamente")
+                st.success("✅ Datos obtenidos")
         
-        # Preparar datos
         keywords_list = [k.strip() for k in keywords.split(",")] if keywords else []
         
         links = {
@@ -1580,134 +1597,83 @@ def main():
             "text": alternativo_text
         } if alternativo_url else {}
         
-        # Inicializar generador
         generator = ContentGenerator(st.secrets['ANTHROPIC_API_KEY'])
         
-        # Progress bar
         progress = st.progress(0)
         status = st.status("⏳ Generando contenido...", expanded=True)
         
-        # PASO 1: Generación inicial
-        status.write(f"📝 Paso 1/3: Generando contenido tipo '{arquetipo['name']}'...")
-        prompt_gen = build_generation_prompt(
+        status.write(f"📝 Generando contenido tipo '{arquetipo['name']}'...")
+        prompt_gen = build_generation_prompt_with_modules(
             pdp_data, arquetipo, content_length,
-            keywords_list, context, links, modules, objetivo,
+            keywords_list, context, links, modules_data, objetivo,
             producto_alternativo, casos_uso, campos_arquetipo
         )
         
-        initial_content = generator.generate(prompt_gen)
-        if not initial_content:
-            st.error("❌ Error en generación inicial")
-            st.stop()
-        
-        progress.progress(40)
-        time.sleep(0.5)
-        
-        # PASO 2: Corrección crítica
-        status.write("🔍 Paso 2/3: Realizando corrección crítica...")
-        prompt_corr = build_correction_prompt(initial_content, objetivo)
-        
-        corrections = generator.generate(prompt_corr, max_tokens=4000)
-        if not corrections:
-            st.error("❌ Error en corrección")
-            st.stop()
-        
-        progress.progress(70)
-        time.sleep(0.5)
-        
-        # PASO 3: Versión final
-        status.write("✨ Paso 3/3: Aplicando correcciones y optimizando...")
-        prompt_final = build_final_prompt(initial_content, corrections)
-        
-        final_content = generator.generate(prompt_final)
+        final_content = generator.generate(prompt_gen)
         if not final_content:
-            st.error("❌ Error en versión final")
+            st.error("❌ Error en generación")
             st.stop()
         
         progress.progress(100)
         status.update(label="✅ Completado", state="complete")
         
-        # Guardar resultados
         st.session_state.results = {
-            'initial': initial_content,
-            'corrections': corrections,
             'final': final_content,
             'metadata': {
                 'product_id': product_id or "N/A",
                 'arquetipo': arquetipo_code,
                 'objetivo': objetivo,
                 'campos_arquetipo': campos_arquetipo,
-                'producto_alternativo': producto_alternativo,
-                'casos_uso': casos_uso,
-                'modulos': modules,
+                'modulos': modules_data,
                 'timestamp': datetime.now().isoformat()
             }
         }
         
-        # Mostrar resultados
         st.markdown("---")
-        st.success(f"✅ Contenido tipo '{arquetipo['name']}' generado exitosamente")
+        st.success(f"✅ Contenido generado")
         
-        # Mostrar resumen de configuración
-        with st.expander("📋 Configuración aplicada", expanded=False):
+        with st.expander("📋 Configuración aplicada", expanded=True):
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.markdown(f"**Arquetipo:** {arquetipo['name']}")
-                st.markdown(f"**Producto ID:** {product_id or 'N/A'}")
+                st.markdown(f"**Producto:** {product_id or 'N/A'}")
             with col2:
-                st.markdown(f"**Alternativo:** {'✅' if producto_alternativo else '❌'}")
-                st.markdown(f"**Casos de uso:** {len(casos_uso)}")
+                st.markdown(f"**Módulos:** {len(modules_data)}")
+                if len(modules_data) > 0:
+                    for mod in modules_data:
+                        if mod['type'] == 'product':
+                            st.markdown(f"- 🎯 {mod['nombre']}")
+                        else:
+                            st.markdown(f"- 🎠 {mod['category_name']}")
             with col3:
-                st.markdown(f"**Módulos:** {len(modules)}")
-                st.markdown(f"**Campos específicos:** {len([v for v in campos_arquetipo.values() if v])}")
+                st.markdown(f"**Alternativo:** {'✅' if producto_alternativo else '❌'}")
+                st.markdown(f"**Casos uso:** {len(casos_uso)}")
         
-        tab1, tab2, tab3 = st.tabs([
-            "📄 Versión Inicial",
-            "🔍 Corrección Crítica",
-            "✨ Versión Final"
-        ])
+        st.markdown("### 📄 Contenido Final")
         
-        with tab1:
-            st.markdown("### Contenido Inicial")
-            with st.expander("Ver código HTML"):
-                st.code(initial_content, language='html')
+        with st.expander("👁️ Vista previa renderizada", expanded=True):
+            st.components.v1.html(final_content, height=800, scrolling=True)
+        
+        with st.expander("</> Código HTML"):
+            st.code(final_content, language='html')
+        
+        col1, col2 = st.columns(2)
+        with col1:
             st.download_button(
-                "⬇️ Descargar HTML Inicial",
-                data=initial_content,
-                file_name=f"inicial_{arquetipo_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
-                mime="text/html"
+                "⬇️ Descargar HTML",
+                data=final_content,
+                file_name=f"contenido_{arquetipo_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
+                mime="text/html",
+                use_container_width=True
             )
-        
-        with tab2:
-            st.markdown("### Análisis y Correcciones Críticas")
-            st.markdown(corrections)
-        
-        with tab3:
-            st.markdown("### Contenido Final Optimizado")
-            
-            with st.expander("👁️ Vista previa renderizada", expanded=True):
-                st.components.v1.html(final_content, height=800, scrolling=True)
-            
-            with st.expander("</> Código HTML final"):
-                st.code(final_content, language='html')
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.download_button(
-                    "⬇️ Descargar HTML Final",
-                    data=final_content,
-                    file_name=f"final_{arquetipo_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
-                    mime="text/html",
-                    use_container_width=True
-                )
-            with col2:
-                st.download_button(
-                    "⬇️ Descargar JSON completo",
-                    data=json.dumps(st.session_state.results, indent=2, ensure_ascii=False),
-                    file_name=f"generacion_{arquetipo_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                    mime="application/json",
-                    use_container_width=True
-                )
+        with col2:
+            st.download_button(
+                "⬇️ Descargar JSON",
+                data=json.dumps(st.session_state.results, indent=2, ensure_ascii=False),
+                file_name=f"generacion_{arquetipo_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                use_container_width=True
+            )
 
 if __name__ == "__main__":
     main()
