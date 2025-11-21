@@ -1,10 +1,11 @@
 """
 Content Generator - PcComponentes
-Versión 3.0 COMPLETA
+Versión 3.1 - CSV Load Fix
 - 12 arquetipos completos con todos sus campos específicos
 - Sistema Dual de Módulos (Producto + Carrusel)
 - Búsqueda incremental de categorías
 - Integración completa con CSV
+- Carga de CSV con múltiples fallbacks
 """
 
 import streamlit as st
@@ -13,6 +14,7 @@ import requests
 import json
 import time
 import pandas as pd
+import os
 from datetime import datetime
 
 # ============================================================================
@@ -27,18 +29,51 @@ st.set_page_config(
 )
 
 # ============================================================================
-# CARGA DE DATOS DE CATEGORÍAS
+# CARGA DE DATOS DE CATEGORÍAS - MEJORADA
 # ============================================================================
 
 @st.cache_data
 def load_categories_data():
-    """Carga el CSV de categorías"""
-    try:
-        df = pd.read_csv('/mnt/user-data/uploads/query_result_2025-11-21T11_57_22.csv', sep=';', encoding='utf-8-sig')
-        return df
-    except Exception as e:
-        st.error(f"Error cargando categorías: {str(e)}")
-        return None
+    """Carga el CSV de categorías con múltiples fallbacks"""
+    
+    # Lista de posibles ubicaciones del CSV
+    possible_paths = [
+        'data/categories.csv',  # Ruta relativa (local y Streamlit Cloud)
+        os.path.join(os.path.dirname(__file__), 'data', 'categories.csv'),  # Ruta absoluta del proyecto
+        '/mnt/user-data/uploads/query_result_2025-11-21T11_57_22.csv',  # Ruta Claude (solo para testing)
+    ]
+    
+    for csv_path in possible_paths:
+        try:
+            if os.path.exists(csv_path):
+                df = pd.read_csv(csv_path, sep=';', encoding='utf-8-sig')
+                st.success(f"✅ {len(df)} categorías cargadas correctamente")
+                return df
+        except Exception as e:
+            continue
+    
+    # Si no se encuentra en ninguna ruta
+    st.error("❌ No se encontró el archivo de categorías")
+    st.info("""
+    💡 **Para solucionar esto:**
+    
+    1. Crea la carpeta `data/` en tu proyecto
+    2. Descarga el archivo `categories.csv` 
+    3. Colócalo en `data/categories.csv`
+    4. Reinicia la aplicación
+    
+    **Estructura esperada:**
+    ```
+    content-generator-mvp/
+    ├── app.py
+    ├── data/
+    │   └── categories.csv  ← Aquí
+    └── requirements.txt
+    ```
+    
+    O consulta el README para más opciones.
+    """)
+    return None
 
 def get_categories_by_locale(df, locale):
     """Obtiene categorías filtradas por idioma"""
@@ -1489,15 +1524,16 @@ def render_sidebar():
         st.markdown("**PcComponentes**")
         st.markdown("---")
         
-        st.markdown("### 🆕 V3.0 COMPLETA")
+        st.markdown("### 🆕 V3.1")
         st.markdown("✅ 12 arquetipos completos")
         st.markdown("✅ Sistema dual de módulos")
         st.markdown("✅ Campos específicos por arquetipo")
         st.markdown("✅ Búsqueda de categorías")
+        st.markdown("✅ Carga de CSV mejorada")
         st.markdown("---")
         
         st.markdown("### Info")
-        st.markdown("Versión 3.0 COMPLETA")
+        st.markdown("Versión 3.1")
         st.markdown("© 2025 PcComponentes")
 
 def main():
@@ -1505,7 +1541,7 @@ def main():
     
     render_sidebar()
     
-    st.title("Content Generator V3.0 COMPLETA")
+    st.title("Content Generator V3.1")
     st.markdown("12 Arquetipos + Sistema Dual de Módulos (Producto + Carrusel)")
     st.markdown("---")
     
