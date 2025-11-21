@@ -36,23 +36,25 @@ st.set_page_config(
 def load_categories_data():
     """Carga el CSV de categorías con múltiples fallbacks"""
     
-    # Lista de posibles ubicaciones del CSV
+    # Lista de posibles ubicaciones del CSV (en orden de prioridad)
     possible_paths = [
         'data/categories.csv',  # Ruta relativa (local y Streamlit Cloud)
         os.path.join(os.path.dirname(__file__), 'data', 'categories.csv'),  # Ruta absoluta del proyecto
         '/mnt/user-data/uploads/query_result_2025-11-21T11_57_22.csv',  # Ruta Claude (solo para testing)
     ]
     
+    # Intentar cargar desde cada ruta sin mostrar errores intermedios
     for csv_path in possible_paths:
         try:
             if os.path.exists(csv_path):
                 df = pd.read_csv(csv_path, sep=';', encoding='utf-8-sig')
                 st.success(f"✅ {len(df)} categorías cargadas correctamente")
                 return df
-        except Exception as e:
+        except Exception:
+            # Continuar silenciosamente al siguiente path
             continue
     
-    # Si no se encuentra en ninguna ruta
+    # Si no se encuentra en ninguna ruta, mostrar error útil
     st.error("❌ No se encontró el archivo de categorías")
     st.info("""
     💡 **Para solucionar esto:**
