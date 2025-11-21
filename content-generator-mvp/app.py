@@ -5,7 +5,7 @@ Versión 3.1 - CSV Load Fix
 - Sistema Dual de Módulos (Producto + Carrusel)
 - Búsqueda incremental de categorías
 - Integración completa con CSV
-- Carga de CSV con múltiples fallbacks
+- Carga de CSV con múltiples fallbacks - CORREGIDA
 """
 
 import streamlit as st
@@ -29,52 +29,66 @@ st.set_page_config(
 )
 
 # ============================================================================
-# CARGA DE DATOS DE CATEGORÍAS - MEJORADA
+# CARGA DE DATOS DE CATEGORÍAS - MEJORADA CON DEBUG
 # ============================================================================
 
 @st.cache_data
 def load_categories_data():
-    """Carga el CSV de categorías con múltiples fallbacks"""
+    """Carga el CSV de categorías con debug mejorado"""
     
-    # Lista de posibles ubicaciones del CSV (en orden de prioridad)
+    # Lista de posibles ubicaciones del CSV
     possible_paths = [
-        'data/categories.csv',  # Ruta relativa (local y Streamlit Cloud)
-        os.path.join(os.path.dirname(__file__), 'data', 'categories.csv'),  # Ruta absoluta del proyecto
-        '/mnt/user-data/uploads/query_result_2025-11-21T11_57_22.csv',  # Ruta Claude (solo para testing)
+        'data/categories.csv',
+        os.path.join(os.path.dirname(__file__), 'data', 'categories.csv'),
     ]
     
-    # Intentar cargar desde cada ruta sin mostrar errores intermedios
+    debug_info = []
+    
     for csv_path in possible_paths:
         try:
+            debug_info.append(f"Probando: {csv_path} - Existe: {os.path.exists(csv_path)}")
+            
             if os.path.exists(csv_path):
                 df = pd.read_csv(csv_path, sep=';', encoding='utf-8-sig')
-                st.success(f"✅ {len(df)} categorías cargadas correctamente")
+                st.success(f"✅ {len(df)} categorías cargadas desde: {csv_path}")
                 return df
-        except Exception:
-            # Continuar silenciosamente al siguiente path
+        except Exception as e:
+            debug_info.append(f"Error en {csv_path}: {str(e)}")
             continue
     
-    # Si no se encuentra en ninguna ruta, mostrar error útil
-    st.error("❌ No se encontró el archivo de categorías")
-    st.info("""
-    💡 **Para solucionar esto:**
+    # Error con información de debug
+    st.error("❌ No se encontró el archivo categories.csv")
     
-    1. Crea la carpeta `data/` en tu proyecto
-    2. Descarga el archivo `categories.csv` 
-    3. Colócalo en `data/categories.csv`
-    4. Reinicia la aplicación
+    with st.expander("🔍 Debug - Click para ver detalles"):
+        st.write("**Rutas probadas:**")
+        for info in debug_info:
+            st.code(info)
+        
+        st.write("\n**Directorio actual:**")
+        st.code(os.getcwd())
+        
+        st.write("\n**Contenido del directorio raíz:**")
+        try:
+            files = os.listdir('.')
+            for f in files:
+                st.text(f"  - {f}")
+            
+            if 'data' in files:
+                st.write("\n**Contenido de data/:**")
+                data_files = os.listdir('data')
+                for f in data_files:
+                    st.text(f"  - {f}")
+        except Exception as e:
+            st.error(f"Error listando archivos: {e}")
     
-    **Estructura esperada:**
-    ```
-    content-generator-mvp/
-    ├── app.py
-    ├── data/
-    │   └── categories.csv  ← Aquí
-    └── requirements.txt
-    ```
+    st.warning("""
+    💡 **Pasos para solucionar:**
     
-    O consulta el README para más opciones.
+    1. Verifica que la carpeta `data/` está en GitHub
+    2. Verifica que `categories.csv` está dentro de `data/`
+    3. Haz push y reinicia la app en Streamlit Cloud
     """)
+    
     return None
 
 def get_categories_by_locale(df, locale):
