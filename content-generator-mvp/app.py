@@ -1,11 +1,11 @@
 """
 Content Generator - PcComponentes
-Versión 3.1 - CSV Load Fix
+Versión 3.1 + GSC Integration
 - 12 arquetipos completos con todos sus campos específicos
 - Sistema Dual de Módulos (Producto + Carrusel)
 - Búsqueda incremental de categorías
 - Integración completa con CSV
-- Carga de CSV con múltiples fallbacks - CORREGIDA
+- Verificación GSC antes de generar contenido ← NUEVO
 """
 
 import streamlit as st
@@ -16,6 +16,7 @@ import time
 import pandas as pd
 import os
 from datetime import datetime
+from gsc_checker import GSCChecker, render_gsc_auth_ui, render_gsc_check_results
 
 # ============================================================================
 # CONFIGURACIÓN
@@ -27,6 +28,17 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ============================================================================
+# CONFIGURACIÓN GSC
+# ============================================================================
+
+GSC_CLIENT_CONFIG = None
+if 'GSC_CLIENT_CONFIG' in st.secrets:
+    try:
+        GSC_CLIENT_CONFIG = json.loads(st.secrets['GSC_CLIENT_CONFIG'])
+    except:
+        st.warning("⚠️ GSC_CLIENT_CONFIG en secrets no es JSON válido")
 
 # ============================================================================
 # CARGA DE DATOS DE CATEGORÍAS - MEJORADA CON DEBUG
@@ -1530,6 +1542,109 @@ class ContentGenerator:
             return None
 
 # ============================================================================
+# FUNCIÓN DE VERIFICACIÓN GSC
+# ============================================================================
+
+def render_gsc_verification_section(keywords_input):
+    """
+    Renderiza sección de verificación GSC
+    Args:
+        keywords_input: String con keywords separadas por comas
+    Returns:
+        bool: True si debe bloquear generación por alertas críticas
+    """
+    if not keywords_input or not GSC_CLIENT_CONFIG:
+        if keywords_input and not GSC_CLIENT_CONFIG:
+            st.info("💡 Configura GSC_CLIENT_CONFIG en secrets para verificar contenido existente")
+        return False
+    
+    st.markdown("### 🔍 Verificación de Contenido Existente")
+    
+    # Autenticación GSC
+    with st.expander("🔐 Conectar con Google Search Console", expanded=False):
+        gsc_credentials = render_gsc_auth_ui(GSC_CLIENT_CONFIG)
+    
+    # Si está autenticado, mostrar botón de verificación
+    if 'gsc_credentials' in st.session_state and st.session_state.gsc_credentials:
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            check_gsc = st.button(
+                "🔍 Verificar si existe contenido para estas keywords",
+                type="secondary",
+                use_container_width=True
+            )
+        
+        with col2:
+            auto_check = st.checkbox(
+                "Auto-verificar", 
+                value=False, 
+                help="Verificar automáticamente al cambiar keywords"
+            )
+        
+        # Realizar verificación
+        should_check = check_gsc or (auto_check and keywords_input and 'last_checked_keyword' not in st.session_state)
+        
+        if should_check:
+            # Tomar primera keyword como principal
+            main_keyword = keywords_input.split(',')[0].strip()
+            st.session_state['last_checked_keyword'] = main_keyword
+            
+            with st.spinner(f"🔍 Consultando Google Search Console para '{main_keyword}'..."):
+                try:
+                    # Inicializar checker
+                    site_url = st.secrets.get('GSC_SITE_URL', 'https://www.pccomponentes.com/')
+                    checker = GSCChecker(site_url=site_url)
+                    
+                    # Autenticar
+                    if checker.authenticate_with_credentials(st.session_state.gsc_credentials):
+                        
+                        # Verificar keyword con variaciones
+                        results = checker.check_keyword_comprehensive(
+                            keyword=main_keyword,
+                            periods=[1, 7, 28],
+                            position_threshold=30,
+                            impressions_threshold=50
+                        )
+                        
+                        # Guardar resultados
+                        st.session_state['gsc_check_results'] = results
+                    
+                    else:
+                        st.error("Error autenticando con GSC")
+                
+                except Exception as e:
+                    st.error(f"Error verificando GSC: {str(e)}")
+        
+        # Mostrar resultados si existen
+        if 'gsc_check_results' in st.session_state:
+            render_gsc_check_results(st.session_state.gsc_check_results)
+            
+            # Si hay alertas críticas, mostrar confirmación
+            alerts = st.session_state.gsc_check_results.get('alerts', [])
+            critical_alerts = [a for a in alerts if a['level'] == 'critical']
+            
+            if critical_alerts:
+                st.markdown("---")
+                st.session_state['confirm_new_content'] = st.checkbox(
+                    "⚠️ Confirmo que quiero crear NUEVO contenido (no actualizar existente)",
+                    value=False,
+                    help="Activa esto solo si estás seguro de que quieres crear contenido nuevo a pesar de las alertas"
+                )
+                
+                if not st.session_state.get('confirm_new_content', False):
+                    st.warning("⏸️ Debes confirmar para continuar con la generación de contenido nuevo")
+                    return True  # Bloquear generación
+            
+            return False  # No bloquear
+    
+    elif not keywords_input:
+        st.info("💡 Introduce keywords para verificar si ya existe contenido rankeando")
+    
+    return False  # No bloquear si no hay verificación
+
+# ============================================================================
 # UI PRINCIPAL
 # ============================================================================
 
@@ -1540,16 +1655,16 @@ def render_sidebar():
         st.markdown("**PcComponentes**")
         st.markdown("---")
         
-        st.markdown("### 🆕 V3.1")
+        st.markdown("### 🆕 V3.1 + GSC")
         st.markdown("✅ 12 arquetipos completos")
         st.markdown("✅ Sistema dual de módulos")
         st.markdown("✅ Campos específicos por arquetipo")
         st.markdown("✅ Búsqueda de categorías")
-        st.markdown("✅ Carga de CSV mejorada")
+        st.markdown("✅ Verificación GSC")
         st.markdown("---")
         
         st.markdown("### Info")
-        st.markdown("Versión 3.1")
+        st.markdown("Versión 3.1 + GSC")
         st.markdown("© 2025 PcComponentes")
 
 def main():
@@ -1557,8 +1672,8 @@ def main():
     
     render_sidebar()
     
-    st.title("Content Generator V3.1")
-    st.markdown("12 Arquetipos + Sistema Dual de Módulos (Producto + Carrusel)")
+    st.title("Content Generator V3.1 + GSC")
+    st.markdown("12 Arquetipos + Sistema Dual de Módulos + Verificación GSC")
     st.markdown("---")
     
     if 'ANTHROPIC_API_KEY' not in st.secrets:
@@ -1615,6 +1730,18 @@ def main():
     if not objetivo:
         st.warning("⚠️ El objetivo es obligatorio")
     
+    # Keywords (movidas aquí desde configuración avanzada)
+    st.markdown("---")
+    keywords = st.text_input(
+        "Keywords SEO principales (separadas por comas)",
+        placeholder="robot aspirador xiaomi, oferta black friday",
+        help="Se verificará si ya existe contenido rankeando para estas keywords"
+    )
+    
+    # Verificación GSC (NUEVA SECCIÓN)
+    st.markdown("---")
+    block_generation = render_gsc_verification_section(keywords)
+    
     # Campos específicos del arquetipo
     st.markdown("---")
     campos_arquetipo = render_campos_especificos(arquetipo)
@@ -1627,11 +1754,6 @@ def main():
     
     # SECCIÓN 4: Configuración avanzada
     with st.expander("⚙️ Configuración Avanzada", expanded=False):
-        
-        keywords = st.text_input(
-            "Keywords SEO (separadas por comas)",
-            placeholder="robot aspirador, oferta"
-        )
         
         context = st.text_area(
             "Contexto adicional",
@@ -1686,11 +1808,19 @@ def main():
             "🚀 Generar Contenido",
             type="primary",
             use_container_width=True,
-            disabled=not objetivo
+            disabled=(not objetivo or block_generation)
         )
     
     # Proceso de generación
     if generate:
+        
+        # Limpiar resultados GSC previos para nueva generación
+        if 'gsc_check_results' in st.session_state:
+            del st.session_state['gsc_check_results']
+        if 'last_checked_keyword' in st.session_state:
+            del st.session_state['last_checked_keyword']
+        if 'confirm_new_content' in st.session_state:
+            del st.session_state['confirm_new_content']
         
         pdp_data = None
         if product_id:
@@ -1745,6 +1875,7 @@ def main():
                 'product_id': product_id or "N/A",
                 'arquetipo': arquetipo_code,
                 'objetivo': objetivo,
+                'keywords': keywords_list,
                 'campos_arquetipo': campos_arquetipo,
                 'modulos': modules_data,
                 'timestamp': datetime.now().isoformat()
@@ -1770,6 +1901,7 @@ def main():
             with col3:
                 st.markdown(f"**Alternativo:** {'✅' if producto_alternativo else '❌'}")
                 st.markdown(f"**Casos uso:** {len(casos_uso)}")
+                st.markdown(f"**Keywords:** {len(keywords_list)}")
         
         st.markdown("### 📄 Contenido Final")
         
