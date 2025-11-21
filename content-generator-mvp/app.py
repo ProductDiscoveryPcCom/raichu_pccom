@@ -1738,8 +1738,7 @@ def main():
         help="Se verificará si ya existe contenido rankeando para estas keywords"
     )
     
-    # Verificación GSC (NUEVA SECCIÓN)
-    st.markdown("---")
+    # Verificación GSC (NUEVA SECCIÓN - sin separador porque es parte del flujo)
     block_generation = render_gsc_verification_section(keywords)
     
     # Campos específicos del arquetipo
