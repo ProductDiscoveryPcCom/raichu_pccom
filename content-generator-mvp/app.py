@@ -1752,7 +1752,47 @@ def main():
     
     modules_data = render_module_configurator()
     
-    # SECCIÓN 4: Configuración avanzada
+    # SECCIÓN 4: Enlaces (AHORA VISIBLE)
+    st.markdown("---")
+    st.header("4. Enlaces Internos")
+    
+    st.markdown("### 🔗 Enlace Principal")
+    col1, col2 = st.columns(2)
+    with col1:
+        link_principal_url = st.text_input(
+            "URL enlace principal",
+            placeholder="https://www.pccomponentes.com/black-friday",
+            help="URL de categoría Black Friday o PDP principal"
+        )
+    with col2:
+        link_principal_text = st.text_input(
+            "Texto anchor principal",
+            placeholder="Ej: ofertas Black Friday",
+            help="Texto del enlace"
+        )
+    
+    st.markdown("### 🔗 Enlaces Secundarios (hasta 3)")
+    links_secundarios = []
+    for i in range(3):
+        col1, col2 = st.columns(2)
+        with col1:
+            url = st.text_input(
+                f"URL secundario {i+1}",
+                key=f"sec_url_{i}",
+                placeholder="https://www.pccomponentes.com/..."
+            )
+        with col2:
+            text = st.text_input(
+                f"Texto anchor {i+1}",
+                key=f"sec_text_{i}",
+                placeholder="Ej: nombre producto"
+            )
+        
+        if url and text:
+            links_secundarios.append({"url": url, "text": text})
+    
+    # SECCIÓN 5: Configuración avanzada
+    st.markdown("---")
     with st.expander("⚙️ Configuración Avanzada", expanded=False):
         
         context = st.text_area(
@@ -1766,9 +1806,9 @@ def main():
         
         col1, col2 = st.columns(2)
         with col1:
-            alternativo_url = st.text_input("URL producto alternativo")
+            alternativo_url = st.text_input("URL producto alternativo", key="alt_url")
         with col2:
-            alternativo_text = st.text_input("Texto", placeholder="Ej: Roborock S7")
+            alternativo_text = st.text_input("Texto", placeholder="Ej: Roborock S7", key="alt_text")
         
         st.markdown("### 📋 Casos de Uso")
         casos_uso_text = st.text_area(
@@ -1777,27 +1817,6 @@ def main():
             height=100
         )
         casos_uso = [caso.strip() for caso in casos_uso_text.split('\n') if caso.strip()] if casos_uso_text else []
-        
-        st.markdown("---")
-        st.markdown("### 🔗 Enlaces")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            link_principal_url = st.text_input("URL enlace principal")
-        with col2:
-            link_principal_text = st.text_input("Texto enlace principal")
-        
-        st.markdown("**Enlaces secundarios** (hasta 3)")
-        links_secundarios = []
-        for i in range(3):
-            col1, col2 = st.columns(2)
-            with col1:
-                url = st.text_input(f"URL secundario {i+1}", key=f"sec_url_{i}")
-            with col2:
-                text = st.text_input(f"Texto secundario {i+1}", key=f"sec_text_{i}")
-            
-            if url and text:
-                links_secundarios.append({"url": url, "text": text})
     
     # Botón generar
     st.markdown("---")
