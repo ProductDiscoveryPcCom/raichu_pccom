@@ -2250,7 +2250,7 @@ def main():
     
     render_sidebar()
     
-    st.title("Content Generator V3.1 + GSC")
+    st.title("Raichu Content Generator V1.0")
     st.markdown("18 Arquetipos + Sistema Dual de Módulos + Verificación GSC + Flujo 3 Etapas")
     st.markdown("---")
     
