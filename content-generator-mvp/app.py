@@ -1,12 +1,15 @@
 """
 Content Generator - PcComponentes
-Versión 3.2 - CSS Fix for CMS Compatibility
-- 12 arquetipos completos con todos sus campos específicos
+Versión 3.3 - CSS Fix for CMS Compatibility + Article Structure
+- 18 arquetipos completos con todos sus campos específicos
 - Sistema Dual de Módulos (Producto + Carrusel)
 - Búsqueda incremental de categorías
 - Integración completa con CSV
 - Verificación GSC antes de generar contenido
 - CSS CORREGIDO para compatibilidad con CMS
+- NUEVO: Estructura <article> obligatoria
+- NUEVO: Kicker con <span> en lugar de <div>
+- NUEVO: Módulos con <p><span> en lugar de <div>
 """
 
 import streamlit as st
@@ -885,7 +888,7 @@ CORRECTO: "Perfecto con mascotas estándar; con razas grandes de pelo largo, fun
 """
 
 # ============================================================================
-# CSS CORREGIDO PARA CMS - VERSIÓN COMPATIBLE
+# CSS CORREGIDO PARA CMS - VERSIÓN 3.3 COMPATIBLE
 # ============================================================================
 
 CSS_CMS_COMPATIBLE = """<style>
@@ -903,11 +906,12 @@ CSS_CMS_COMPATIBLE = """<style>
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--white);color:var(--ink);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+article{max-width:100%;margin:0 auto}
 h1,h2,h3,h4{font-weight:800;margin:var(--space-4) 0 var(--space-2);color:var(--primary)}
 h1{font-size:34px}h2{font-size:24px}h3{font-size:20px}h4{font-size:16px}
 strong{font-weight:800}p,ul,ol{margin:var(--space-2) 0}
 a{color:var(--primary);text-decoration:underline}a:hover{opacity:.9}
-.kicker{display:inline-block;background:var(--primary-100);color:var(--primary);border:1px solid var(--primary);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700}
+.kicker{display:inline-block;background:var(--primary-100);color:var(--primary);border:1px solid var(--primary);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;margin-bottom:var(--space-2)}
 .badges{display:flex;gap:8px;flex-wrap:wrap;margin:var(--space-2) 0}
 .badge{border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--muted);background:#fff}
 .callout{border-left:6px solid var(--primary);background:var(--gray-50);padding:var(--space-3) var(--space-4);border-radius:var(--radius-10);margin:var(--space-4) 0}
@@ -958,17 +962,17 @@ meter{width:100%;height:10px}
 EJEMPLOS_CSS = CSS_CMS_COMPATIBLE
 
 # ============================================================================
-# GENERADORES DE SHORTCODES
+# GENERADORES DE SHORTCODES - CORREGIDO v3.3: Usar <p><span> en lugar de <div>
 # ============================================================================
 
 def generate_product_module(article_id, nombre=""):
-    """Genera shortcode de producto destacado con espacios HTML"""
+    """Genera shortcode de producto destacado - CORREGIDO: usa <p><span>"""
     shortcode = f'#MODULE_START#|{{"type":"article","params":{{"articleId":"{article_id}"}}}}|#MODULE_END#'
-    # Envolver con divs para asegurar espaciado visual
-    return f'<div style="margin: 2em 0;">{shortcode}</div>'
+    # CORRECCIÓN v3.3: Usar <p><span> en lugar de <div> para compatibilidad CMS
+    return f'<p><span>{shortcode}</span></p>'
 
 def generate_carousel_module(slug, category_id, order, navigation, loop, article_amount):
-    """Genera shortcode de carrusel de categoría con espacios HTML"""
+    """Genera shortcode de carrusel de categoría - CORREGIDO: usa <p><span>"""
     shortcode = {
         "type": "carouselArticle",
         "params": {
@@ -985,16 +989,51 @@ def generate_carousel_module(slug, category_id, order, navigation, loop, article
         }
     }
     shortcode_str = f"#MODULE_START#|{json.dumps(shortcode)}|#MODULE_END#"
-    return f'<div style="margin: 2em 0;">{shortcode_str}</div>'
+    # CORRECCIÓN v3.3: Usar <p><span> en lugar de <div> para compatibilidad CMS
+    return f'<p><span>{shortcode_str}</span></p>'
 
 # ============================================================================
-# PROMPTS PARA FLUJO DE 3 ETAPAS - ACTUALIZADOS CON CSS CORRECTO
+# ESTRUCTURA HTML OBLIGATORIA - NUEVO v3.3
+# ============================================================================
+
+HTML_STRUCTURE_INSTRUCTIONS = """
+# ESTRUCTURA HTML OBLIGATORIA (v3.3):
+
+El contenido DEBE seguir esta estructura exacta:
+
+```html
+<style>
+[CSS con variables :root - OBLIGATORIO]
+</style>
+<article>
+  <span class="kicker">[Etiqueta tipo ⚡ OFERTA BLACK FRIDAY 2025]</span>
+  <h1>[Título principal]</h1>
+  
+  [Callout Black Friday con clase .bf-callout]
+  
+  [Resto del contenido usando clases CSS definidas]
+  
+  [Módulos con formato: <p><span>#MODULE_START#|...|#MODULE_END#</span></p>]
+  
+</article>
+```
+
+# REGLAS CRÍTICAS:
+1. ✅ OBLIGATORIO envolver TODO el contenido en <article>...</article>
+2. ✅ Kicker SIEMPRE con <span class="kicker"> (NO usar <div>)
+3. ✅ Módulos SIEMPRE con <p><span>...</span></p> (NO usar <div>)
+4. ✅ CSS completo con variables :root al inicio
+5. ✅ Usar TODAS las clases CSS definidas
+"""
+
+# ============================================================================
+# PROMPTS PARA FLUJO DE 3 ETAPAS - ACTUALIZADOS v3.3 CON ESTRUCTURA ARTICLE
 # ============================================================================
 
 def build_generation_prompt_stage1_draft(pdp_data, arquetipo, target_length, keywords, 
                                          context, links, modules, objetivo, 
                                          producto_alternativo, casos_uso, campos_arquetipo):
-    """ETAPA 1: Generación del BORRADOR inicial - CON CSS CORREGIDO"""
+    """ETAPA 1: Generación del BORRADOR inicial - v3.3 CON ESTRUCTURA ARTICLE"""
     
     keywords_str = ", ".join(keywords) if keywords else "No especificadas"
     arquetipo_context = build_arquetipo_context(arquetipo['code'], campos_arquetipo)
@@ -1049,20 +1088,16 @@ Box veredicto solo con "✅ Perfecto si:" desarrollado extensamente.{casos_uso_s
                 module_info += f"""
 **Tipo:** Producto Destacado
 **Nombre:** {mod['nombre']}
-**Shortcode EXACTO CON ESPACIADO:**
-```html
+**Shortcode EXACTO (COPIAR TAL CUAL):**
 {mod['shortcode']}
-```
 """
             
             elif mod['type'] == 'carousel':
                 module_info += f"""
 **Tipo:** Carrusel de Categoría
 **Categoría:** {mod['category_name']}
-**Shortcode EXACTO CON ESPACIADO:**
-```html
+**Shortcode EXACTO (COPIAR TAL CUAL):**
 {mod['shortcode']}
-```
 """
 
     prompt = f"""
@@ -1110,15 +1145,32 @@ CRÍTICO - CONTROL DE EXTENSIÓN:
 
 Genera HTML puro y funcional. NO uses markdown. NO uses ``` de código.
 
-La estructura DEBE ser:
+{HTML_STRUCTURE_INSTRUCTIONS}
+
+# CSS OBLIGATORIO (COPIAR EXACTAMENTE AL INICIO):
 
 {CSS_CMS_COMPATIBLE}
 
-[CONTENIDO HTML COMPLETO]
+# ESTRUCTURA OBLIGATORIA DEL CONTENIDO:
+
+```html
+<style>[CSS completo con :root]</style>
+<article>
+  <span class="kicker">⚡ [ETIQUETA]</span>
+  <h1>[Título]</h1>
+  
+  <p class="bf-callout">⚡ <strong>Consejo:</strong> No te pierdas las mejores ofertas de PcComponentes este Black Friday. ¡Visita nuestra página de <a href="https://www.pccomponentes.com/black-friday">Black Friday</a>!</p>
+  
+  [Contenido con clases CSS]
+  
+  [Módulos con <p><span>...</span></p>]
+  
+</article>
+```
 
 # CLASES CSS OBLIGATORIAS A USAR:
 
-✅ .kicker - Para etiquetas tipo "⚡ OFERTA BLACK FRIDAY 2025"
+✅ .kicker - Para etiquetas (USAR CON <span>, NO <div>)
 ✅ .badges y .badge - Para tags de características
 ✅ .callout - Para destacados importantes
 ✅ .callout.accent - Para destacados urgentes (ofertas)
@@ -1135,22 +1187,11 @@ La estructura DEBE ser:
 ✅ .hr - Para separadores
 ✅ .note - Para notas pequeñas
 
-# CALLOUT BLACK FRIDAY OBLIGATORIO (en primeros párrafos):
+# FORMATO DE MÓDULOS - CRÍTICO:
 
-<p class="bf-callout">⚡ <strong>Consejo:</strong> No te pierdas las mejores ofertas de PcComponentes este Black Friday. ¡Visita nuestra página de <a href="https://www.pccomponentes.com/black-friday">Black Friday</a>!</p>
-
-# ELEMENTOS HTML PERMITIDOS:
-
-✅ <h1>, <h2>, <h3>, <h4>
-✅ <p>, <strong>, <em>
-✅ <ul>, <ol>, <li>
-✅ <div class="...">
-✅ <a href="...">
-✅ Shortcodes de módulos (dentro de divs)
-
-❌ NO usar: **, ##, [], syntax markdown
-❌ NO usar: <script>, <iframe>
-❌ NO usar: estilos inline extensos (usa las clases CSS definidas)
+✅ CORRECTO: <p><span>#MODULE_START#|...|#MODULE_END#</span></p>
+❌ INCORRECTO: <div>#MODULE_START#|...|#MODULE_END#</div>
+❌ INCORRECTO: <div style="margin:...">...</div>
 
 # ESTRUCTURA DE TABLAS (IMPORTANTE):
 
@@ -1209,25 +1250,27 @@ Para tablas de especificaciones, usa EXACTAMENTE esta estructura:
 
 # VERIFICACIÓN FINAL ANTES DE ENTREGAR:
 
-1. ¿Tiene entre {int(target_length * 0.95)} y {int(target_length * 1.05)} palabras?
-2. ¿Es HTML puro (sin markdown)?
-3. ¿Incluye TODOS los módulos?
-4. ¿Los shortcodes están exactos (sin modificar)?
-5. ¿El tono es aspiracional?
-6. ¿Los enlaces están incluidos?
-7. ¿Usa las clases CSS definidas (NO estilos inline)?
-8. ¿Incluye el callout de Black Friday?
-9. ¿Las tablas usan la estructura .lt correcta?
+1. ¿Está envuelto en <article>...</article>?
+2. ¿El kicker usa <span class="kicker"> (NO <div>)?
+3. ¿Tiene entre {int(target_length * 0.95)} y {int(target_length * 1.05)} palabras?
+4. ¿Es HTML puro (sin markdown)?
+5. ¿Incluye TODOS los módulos con formato <p><span>?
+6. ¿Los shortcodes están exactos (sin modificar)?
+7. ¿El tono es aspiracional?
+8. ¿Los enlaces están incluidos?
+9. ¿Usa las clases CSS definidas (NO estilos inline)?
+10. ¿Incluye el callout de Black Friday?
+11. ¿Las tablas usan la estructura .lt correcta?
 
 GENERA AHORA EL BORRADOR INICIAL.
-Responde SOLO con el HTML (desde <style> hasta el final del contenido).
+Responde SOLO con el HTML (desde <style> hasta </article>).
 """
     
     return prompt
 
 
 def build_correction_prompt_stage2(draft_content, target_length, arquetipo, objetivo):
-    """ETAPA 2: Análisis crítico y correcciones"""
+    """ETAPA 2: Análisis crítico y correcciones - v3.3 con verificación de estructura"""
     
     prompt = f"""
 # TAREA: ANÁLISIS CRÍTICO DEL BORRADOR (ETAPA 2/3)
@@ -1251,6 +1294,12 @@ Analiza el borrador con OJO CRÍTICO y responde SOLO en formato JSON:
   "longitud_actual": <número de palabras>,
   "longitud_objetivo": {target_length},
   "necesita_ajuste_longitud": true/false,
+  "estructura_html": {{
+    "tiene_article": true/false,
+    "kicker_usa_span": true/false,
+    "modulos_usan_p_span": true/false,
+    "css_tiene_root": true/false
+  }},
   "problemas_encontrados": [
     {{
       "tipo": "longitud|estructura|tono|enlaces|modulos|seo|css",
@@ -1271,46 +1320,51 @@ Analiza el borrador con OJO CRÍTICO y responde SOLO en formato JSON:
 
 # CRITERIOS DE EVALUACIÓN:
 
-1. **Longitud** (CRÍTICO):
+1. **Estructura HTML** (CRÍTICO - v3.3):
+   - ¿Está envuelto en <article>...</article>? → CRÍTICO si falta
+   - ¿El kicker usa <span class="kicker">? → CRÍTICO si usa <div>
+   - ¿Los módulos usan <p><span>...</span></p>? → CRÍTICO si usan <div>
+   - ¿El CSS tiene variables :root? → CRÍTICO si falta
+
+2. **Longitud** (CRÍTICO):
    - ¿Está en rango {int(target_length * 0.95)}-{int(target_length * 1.05)} palabras?
    - Si no, ¿qué secciones ampliar o reducir?
 
-2. **HTML puro**:
+3. **HTML puro**:
    - ¿Hay markdown (**, ##, [])? → CRÍTICO
    - ¿Está bien formateado?
 
-3. **CSS y Clases** (NUEVO - CRÍTICO):
+4. **CSS y Clases**:
    - ¿Usa las clases CSS definidas (.kicker, .callout, .lt, .grid, etc.)?
    - ¿Hay estilos inline que deberían ser clases?
-   - ¿El CSS está completo con variables :root?
    - ¿Las tablas usan estructura .lt correcta?
 
-4. **Módulos**:
+5. **Módulos**:
    - ¿Están TODOS los módulos?
    - ¿Los shortcodes están exactos?
-   - ¿Tienen espaciado correcto?
+   - ¿Tienen formato <p><span>?
 
-5. **Tono**:
+6. **Tono**:
    - ¿Es aspiracional?
    - ¿Evita negatividad?
    - ¿Suena humano?
 
-6. **Estructura**:
+7. **Estructura**:
    - ¿Sigue el arquetipo?
    - ¿Hay jerarquía HTML clara?
 
-7. **Enlaces**:
+8. **Enlaces**:
    - ¿Están los enlaces obligatorios?
    - ¿Están integrados naturalmente?
    - ¿Incluye callout Black Friday?
 
-8. **SEO**:
+9. **SEO**:
    - ¿Keywords bien integradas?
    - ¿Títulos optimizados?
 
-9. **Valor**:
-   - ¿Aporta información útil?
-   - ¿Ayuda a tomar decisiones?
+10. **Valor**:
+    - ¿Aporta información útil?
+    - ¿Ayuda a tomar decisiones?
 
 SÉ CRÍTICO. Encuentra 3-5 problemas reales.
 Responde SOLO con el JSON.
@@ -1320,7 +1374,7 @@ Responde SOLO con el JSON.
 
 
 def build_final_generation_prompt_stage3(draft_content, corrections_json, target_length):
-    """ETAPA 3: Generación final con correcciones aplicadas"""
+    """ETAPA 3: Generación final con correcciones aplicadas - v3.3"""
     
     prompt = f"""
 # TAREA: GENERACIÓN FINAL CON CORRECCIONES (ETAPA 3/3)
@@ -1335,27 +1389,46 @@ def build_final_generation_prompt_stage3(draft_content, corrections_json, target
 
 Genera la VERSIÓN FINAL del contenido aplicando TODAS las correcciones indicadas.
 
-# INSTRUCCIONES CRÍTICAS:
+# INSTRUCCIONES CRÍTICAS (v3.3):
 
-1. **Longitud**: DEBE estar en rango {int(target_length * 0.95)}-{int(target_length * 1.05)} palabras
-2. **HTML puro**: Elimina TODO el markdown si quedó alguno
-3. **CSS**: Debe usar el CSS con variables :root (NO CSS simple)
-4. **Clases CSS**: Usa TODAS las clases definidas (.kicker, .callout, .lt, .grid, etc.)
-5. **NO estilos inline**: Reemplaza estilos inline por clases CSS
-6. **Módulos**: Verifica que TODOS los shortcodes estén exactos
-7. **Correcciones**: Aplica TODAS las correcciones del JSON
-8. **Calidad**: Esta es la versión final - máxima calidad
+1. **Estructura <article>**: OBLIGATORIO envolver todo en <article>...</article>
+2. **Kicker**: OBLIGATORIO usar <span class="kicker"> (NO <div>)
+3. **Módulos**: OBLIGATORIO formato <p><span>#MODULE_START#|...|#MODULE_END#</span></p>
+4. **Longitud**: DEBE estar en rango {int(target_length * 0.95)}-{int(target_length * 1.05)} palabras
+5. **HTML puro**: Elimina TODO el markdown si quedó alguno
+6. **CSS**: Debe usar el CSS con variables :root (NO CSS simple)
+7. **Clases CSS**: Usa TODAS las clases definidas (.kicker, .callout, .lt, .grid, etc.)
+8. **NO estilos inline**: Reemplaza estilos inline por clases CSS
+9. **Correcciones**: Aplica TODAS las correcciones del JSON
+10. **Calidad**: Esta es la versión final - máxima calidad
 
 # CSS OBLIGATORIO (debe aparecer al inicio):
 
 {CSS_CMS_COMPATIBLE}
 
+# ESTRUCTURA OBLIGATORIA:
+
+```html
+<style>[CSS con :root]</style>
+<article>
+  <span class="kicker">...</span>
+  <h1>...</h1>
+  <p class="bf-callout">...</p>
+  [Contenido]
+  <p><span>#MODULE_START#|...|#MODULE_END#</span></p>
+  [Más contenido]
+</article>
+```
+
 # VERIFICACIÓN FINAL:
 
 Antes de entregar, confirma:
-✅ Longitud correcta
-✅ HTML puro (sin markdown)
+✅ Envuelto en <article>...</article>
+✅ Kicker con <span class="kicker"> (NO div)
+✅ Módulos con <p><span>...</span></p> (NO div)
 ✅ CSS con variables :root
+✅ Longitud correcta
+✅ Sin markdown
 ✅ Clases CSS usadas correctamente
 ✅ Sin estilos inline innecesarios
 ✅ Todos los módulos presentes
@@ -1366,7 +1439,7 @@ Antes de entregar, confirma:
 ✅ Tablas con estructura .lt
 
 GENERA AHORA LA VERSIÓN FINAL.
-Responde SOLO con el HTML completo (desde <style> hasta el final).
+Responde SOLO con el HTML completo (desde <style> hasta </article>).
 """
     
     return prompt
@@ -1837,182 +1910,6 @@ def get_arquetipo_guidelines(arquetipo_code):
     
     return guidelines.get(arquetipo_code, "Sigue mejores prácticas del arquetipo.")
 
-def build_generation_prompt_with_modules(pdp_data, arquetipo, length, keywords, context, 
-                                          links, modules, objetivo, producto_alternativo, casos_uso, campos_arquetipo):
-    """Construye prompt completo para generación incluyendo módulos"""
-    
-    keywords_str = ", ".join(keywords) if keywords else "No especificadas"
-    
-    # Contexto del arquetipo
-    arquetipo_context = build_arquetipo_context(arquetipo['code'], campos_arquetipo)
-    
-    # Enlaces
-    link_principal = links.get('principal', {})
-    links_secundarios = links.get('secundarios', [])
-    
-    link_info = ""
-    if link_principal.get('url'):
-        link_info = f"""
-# ENLACES A INCLUIR:
-## Enlace Principal (OBLIGATORIO):
-URL: {link_principal.get('url')}
-Texto anchor: {link_principal.get('text')}
-Ubicación: Primeros 2-3 párrafos
-"""
-    
-    if links_secundarios:
-        link_info += f"""
-## Enlaces Secundarios:
-{chr(10).join([f"- URL: {link.get('url')} | Texto: {link.get('text')}" for link in links_secundarios])}
-"""
-
-    # Producto alternativo
-    alternativo_info = ""
-    if producto_alternativo.get('url'):
-        alternativo_info = f"""
-# PRODUCTO ALTERNATIVO:
-URL: {producto_alternativo.get('url')}
-Texto: {producto_alternativo.get('text', 'producto alternativo')}
-IMPORTANTE: Incluir en "Considera alternativas si:" con enlace.
-"""
-    else:
-        casos_uso_str = ""
-        if casos_uso:
-            casos_uso_str = f"\nCasos de uso:\n" + "\n".join([f"- {caso}" for caso in casos_uso])
-        alternativo_info = f"""
-# PRODUCTO ALTERNATIVO: NO CONFIGURADO
-Box veredicto solo con "✅ Perfecto si:" desarrollado extensamente.{casos_uso_str}
-"""
-
-    # Módulos
-    module_info = ""
-    if modules and len(modules) > 0:
-        module_info = f"""
-# MÓDULOS DE CONTENIDO (CRÍTICO - DEBEN APARECER TODOS):
-
-{len(modules)} módulo(s) configurado(s) que DEBEN incluirse.
-
-"""
-        
-        for idx, mod in enumerate(modules):
-            module_info += f"\n## Módulo {idx + 1}:\n"
-            
-            if mod['type'] == 'product':
-                module_info += f"""
-**Tipo:** Producto Destacado
-**ID:** {mod['article_id']}
-**Nombre:** {mod['nombre']}
-**Shortcode EXACTO:**
-```
-{mod['shortcode']}
-```
-**Ubicación:** Después de mencionar el producto o en análisis.
-"""
-            
-            elif mod['type'] == 'carousel':
-                module_info += f"""
-**Tipo:** Carrusel de Categoría
-**Categoría:** {mod['category_name']}
-**Idioma:** {mod['locale']}
-**Cantidad:** {mod['article_amount']} productos
-**Orden:** {"Por relevancia" if mod['order'] == 'relevance' else "Por precio"}
-
-**Shortcode EXACTO:**
-```
-{mod['shortcode']}
-```
-**Ubicación:** Secciones de alternativas, exploración o al final antes de FAQs.
-**Contexto:** Muestra automáticamente {mod['article_amount']} productos de "{mod['category_name']}" ordenados por {mod['order']}.
-"""
-        
-        module_info += """
-
-**CRÍTICO SOBRE MÓDULOS:**
-1. TODOS deben aparecer en el contenido
-2. Usa shortcode EXACTO (no modificar JSON)
-3. Cada módulo en su propia línea
-4. Decide ubicación óptima por contexto
-5. Añade 1-2 frases antes del módulo explicando qué verá el usuario
-6. NO uses marcadores - usa shortcodes reales
-
-**Ejemplo de integración:**
-```
-Si buscas alternativas, aquí tienes más opciones:
-
-#MODULE_START#|{"type":"carouselArticle",...}|#MODULE_END#
-
-Todos comparten características similares.
-```
-"""
-
-    prompt = f"""
-Eres experto redactor de PcComponentes para contenido optimizado Google Discover.
-
-# OBJETIVO DEL CONTENIDO:
-{objetivo}
-
-# TONO DE MARCA:
-{BRAND_TONE}
-
-# ARQUETIPO:
-{arquetipo['code']} - {arquetipo['name']}
-{arquetipo['description']}
-Caso de uso: {arquetipo['use_case']}
-
-{arquetipo_context}
-
-# DATOS PRODUCTO (si aplica):
-{json.dumps(pdp_data, indent=2, ensure_ascii=False) if pdp_data else "N/A"}
-
-# CONTEXTO:
-{context if context else "Condiciones estándar PcComponentes"}
-
-# KEYWORDS SEO:
-{keywords_str}
-
-# LONGITUD:
-{length} palabras aproximadamente
-
-{link_info}
-
-{alternativo_info}
-
-{module_info}
-
-# FORMATO OUTPUT:
-
-Genera SOLO el artículo comenzando con el CSS y luego el contenido HTML.
-
-# CSS OBLIGATORIO (COPIAR EXACTAMENTE):
-
-{CSS_CMS_COMPATIBLE}
-
-[CONTENIDO HTML COMPLETO USANDO LAS CLASES CSS DEFINIDAS]
-
-# ADAPTACIÓN AL ARQUETIPO {arquetipo['code']}:
-
-{get_arquetipo_guidelines(arquetipo['code'])}
-
-# ELEMENTOS OBLIGATORIOS:
-
-✅ Kicker con clase .kicker
-✅ Título H1 optimizado
-✅ Callout Black Friday (clase .bf-callout)
-✅ Estructura arquetipo {arquetipo['code']}
-✅ Enlaces integrados
-✅ TODOS los módulos con shortcodes exactos
-✅ Tablas con clase .lt
-✅ Cards con clase .card en .grid
-✅ Botones con clase .btn
-✅ Tono aspiracional
-✅ Emojis: solo ✅ ⚡ ❌
-✅ FAQs con schema JSON-LD
-
-Genera AHORA el contenido completo.
-"""
-    
-    return prompt
-
 # ============================================================================
 # GENERATOR CLASS
 # ============================================================================
@@ -2086,7 +1983,7 @@ class ContentGeneratorV4:
 
 
 # ============================================================================
-# FUNCIONES AUXILIARES - FUERA DE LA CLASE ✅
+# FUNCIONES AUXILIARES
 # ============================================================================
 
 def count_words_in_html(html_content):
@@ -2213,18 +2110,21 @@ def render_sidebar():
         st.markdown("**PcComponentes**")
         st.markdown("---")
         
-        st.markdown("### 🆕 V3.2 - CSS Fix")
+        st.markdown("### 🆕 V3.3 - Structure Fix")
         st.markdown("✅ 18 arquetipos completos")
         st.markdown("✅ Sistema dual de módulos")
         st.markdown("✅ Campos específicos por arquetipo")
         st.markdown("✅ Búsqueda de categorías")
         st.markdown("✅ Verificación GSC")
         st.markdown("✅ Flujo 3 etapas")
-        st.markdown("✅ **CSS compatible con CMS**")
+        st.markdown("✅ CSS compatible con CMS")
+        st.markdown("✅ **Estructura <article>**")
+        st.markdown("✅ **Kicker con <span>**")
+        st.markdown("✅ **Módulos <p><span>**")
         st.markdown("---")
         
         st.markdown("### Info")
-        st.markdown("Versión 3.2 - CSS Fix")
+        st.markdown("Versión 3.3 - Structure Fix")
         st.markdown("© 2025 PcComponentes")
 
 def main():
@@ -2234,7 +2134,7 @@ def main():
     
     st.title("Raichu Content Generator V1.0")
     st.markdown("18 Arquetipos + Sistema Dual de Módulos + Verificación GSC + Flujo 3 Etapas")
-    st.markdown("**✅ CSS corregido para compatibilidad con CMS**")
+    st.markdown("**✅ v3.3: Estructura HTML corregida para CMS (<article>, <span> kicker, módulos <p><span>)**")
     st.markdown("---")
     
     if 'ANTHROPIC_API_KEY' not in st.secrets:
@@ -2545,6 +2445,22 @@ def main():
                 porcentaje = (longitud_real / content_length * 100) - 100
                 st.metric("Precisión", f"{porcentaje:+.1f}%")
             
+            # Verificación de estructura v3.3
+            st.markdown("#### 🔍 Verificación Estructura v3.3:")
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                has_article = '<article>' in final_content.lower()
+                st.markdown(f"{'✅' if has_article else '❌'} `<article>`")
+            with col2:
+                has_span_kicker = '<span class="kicker">' in final_content.lower()
+                st.markdown(f"{'✅' if has_span_kicker else '❌'} Kicker `<span>`")
+            with col3:
+                has_p_span_module = '<p><span>#module' in final_content.lower()
+                st.markdown(f"{'✅' if has_p_span_module else '❌'} Módulos `<p><span>`")
+            with col4:
+                has_root = ':root' in final_content
+                st.markdown(f"{'✅' if has_root else '❌'} CSS `:root`")
+            
             with st.expander("👁️ Vista previa renderizada", expanded=True):
                 st.components.v1.html(final_content, height=800, scrolling=True)
             
@@ -2583,6 +2499,24 @@ def main():
             try:
                 corrections_data = json.loads(corrections)
                 
+                # Mostrar verificación de estructura v3.3
+                if 'estructura_html' in corrections_data:
+                    st.markdown("#### 🏗️ Verificación Estructura HTML v3.3:")
+                    estructura = corrections_data['estructura_html']
+                    cols = st.columns(4)
+                    with cols[0]:
+                        status_article = "✅" if estructura.get('tiene_article') else "❌"
+                        st.markdown(f"{status_article} `<article>`")
+                    with cols[1]:
+                        status_kicker = "✅" if estructura.get('kicker_usa_span') else "❌"
+                        st.markdown(f"{status_kicker} Kicker `<span>`")
+                    with cols[2]:
+                        status_modulos = "✅" if estructura.get('modulos_usan_p_span') else "❌"
+                        st.markdown(f"{status_modulos} Módulos `<p><span>`")
+                    with cols[3]:
+                        status_css = "✅" if estructura.get('css_tiene_root') else "❌"
+                        st.markdown(f"{status_css} CSS `:root`")
+                
                 if 'problemas_encontrados' in corrections_data:
                     st.markdown("#### ⚠️ Problemas Encontrados:")
                     for prob in corrections_data['problemas_encontrados']:
@@ -2590,12 +2524,12 @@ def main():
                             'crítico': '🔴',
                             'medio': '🟡',
                             'menor': '🟢'
-                        }.get(prob['gravedad'], '⚪')
+                        }.get(prob.get('gravedad', ''), '⚪')
                         
-                        st.markdown(f"{gravedad_emoji} **{prob['tipo'].upper()}** ({prob['gravedad']})")
-                        st.markdown(f"- {prob['descripcion']}")
-                        st.markdown(f"- 📍 Ubicación: {prob['ubicacion']}")
-                        st.markdown(f"- ✅ Corrección: {prob['correccion_sugerida']}")
+                        st.markdown(f"{gravedad_emoji} **{prob.get('tipo', 'N/A').upper()}** ({prob.get('gravedad', 'N/A')})")
+                        st.markdown(f"- {prob.get('descripcion', 'N/A')}")
+                        st.markdown(f"- 📍 Ubicación: {prob.get('ubicacion', 'N/A')}")
+                        st.markdown(f"- ✅ Corrección: {prob.get('correccion_sugerida', 'N/A')}")
                         st.markdown("---")
                 
                 if 'aspectos_positivos' in corrections_data:
