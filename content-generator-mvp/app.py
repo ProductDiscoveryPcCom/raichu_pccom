@@ -1,11 +1,12 @@
 """
 Content Generator - PcComponentes
-Versión 3.1 + GSC Integration
+Versión 3.2 - CSS Fix for CMS Compatibility
 - 12 arquetipos completos con todos sus campos específicos
 - Sistema Dual de Módulos (Producto + Carrusel)
 - Búsqueda incremental de categorías
 - Integración completa con CSV
-- Verificación GSC antes de generar contenido ← NUEVO
+- Verificación GSC antes de generar contenido
+- CSS CORREGIDO para compatibilidad con CMS
 """
 
 import streamlit as st
@@ -884,152 +885,77 @@ CORRECTO: "Perfecto con mascotas estándar; con razas grandes de pelo largo, fun
 """
 
 # ============================================================================
-# EJEMPLOS CSS
+# CSS CORREGIDO PARA CMS - VERSIÓN COMPATIBLE
 # ============================================================================
 
-EJEMPLOS_CSS = """
-Usa ESTOS estilos como referencia (paleta PcComponentes):
+CSS_CMS_COMPATIBLE = """<style>
+:root{
+  --orange-900:#FF6000;--orange-700:#FF8640;--orange-500:#FFAE80;--orange-300:#FFB7BF;
+  --blue-m-900:#170453;--blue-m-700:#51437E;--blue-m-500:#8B81A9;--blue-m-300:#C5C0D4;
+  --blue-d-900:#090029;--blue-d-700:#46405E;--blue-d-500:#848094;--blue-d-300:#C1BFC9;
+  --white:#FFFFFF;--gray-900:#999999;--gray-700:#949494;--gray-500:#C2C2C2;
+  --gray-300:#E6E6E6;--gray-200:#D9D9D9;--gray-150:#CFCFCF;--gray-50:#F4F4F4;
+  --ink:#141822;--muted:#62697A;--line:var(--gray-300);
+  --primary:var(--blue-m-900);--primary-100:var(--blue-m-300);
+  --accent:var(--orange-900);--accent-100:var(--orange-500);
+  --space-1:6px;--space-2:10px;--space-3:14px;--space-4:18px;--space-5:22px;
+  --radius-0:0;--radius-6:6px;--radius-10:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--white);color:var(--ink);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+h1,h2,h3,h4{font-weight:800;margin:var(--space-4) 0 var(--space-2);color:var(--primary)}
+h1{font-size:34px}h2{font-size:24px}h3{font-size:20px}h4{font-size:16px}
+strong{font-weight:800}p,ul,ol{margin:var(--space-2) 0}
+a{color:var(--primary);text-decoration:underline}a:hover{opacity:.9}
+.kicker{display:inline-block;background:var(--primary-100);color:var(--primary);border:1px solid var(--primary);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin:var(--space-2) 0}
+.badge{border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--muted);background:#fff}
+.callout{border-left:6px solid var(--primary);background:var(--gray-50);padding:var(--space-3) var(--space-4);border-radius:var(--radius-10);margin:var(--space-4) 0}
+.callout.accent{border-left-color:var(--accent);background:var(--accent-100)}
+.callout strong{color:var(--primary)}
+.bf-callout{background-color:#f4f4f4;padding:0.8em 1em;margin:1.2em 0;border-left:4px solid #FF8640;font-size:0.95em}
+.bf-callout a{color:#ff6000;font-weight:bold;text-decoration:underline}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin:var(--space-3) 0}
+.btn{display:inline-block;padding:10px 14px;border-radius:var(--radius-6);border:1px solid var(--line);text-decoration:none;font-weight:700}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.ghost{background:#fff;color:var(--ink)}
+.btn:hover{transform:translateY(-1px)}
+.toc{border:1px dashed var(--line);border-radius:var(--radius-6);padding:12px;background:#fff}
+.toc h4{margin:0 0 6px}
+.toc a{display:block;padding:4px 0;text-decoration:none;border-bottom:1px dashed var(--line);color:var(--muted)}
+.toc a:last-child{border-bottom:none}
+.toc a:hover{color:var(--primary)}
+.note{color:var(--muted);font-size:14px}
+meter{width:100%;height:10px}
+.grid{display:grid;gap:16px;margin:var(--space-3) 0}
+@media(min-width:860px){.grid.cols-3{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:860px){.grid.cols-2{grid-template-columns:repeat(2,1fr)}}
+.card{border:1px solid var(--line);border-radius:var(--radius-6);padding:14px;background:#fff}
+.card h4{margin:0 0 8px}
+.card .why{color:var(--muted);font-size:14px}
+.hr{height:1px;background:var(--line);margin:var(--space-4) 0}
+.lt{border:1px solid var(--line);border-radius:var(--radius-0);overflow:hidden;background:#fff;margin:var(--space-3) 0}
+.lt .r{display:grid;border-top:1px solid var(--line)}
+.lt .r:first-child{border-top:none;background:var(--gray-50);font-weight:800}
+.lt .c{padding:10px}
+.lt.zebra .r:nth-child(odd):not(:first-child){background:#FCFCFD}
+.lt.cols-2 .r{grid-template-columns:1.4fr .6fr}
+.lt.cols-3 .r{grid-template-columns:1fr 1fr 1fr}
+.lt.cols-7 .r{grid-template-columns:1fr 1fr}
+@media(min-width:900px){.lt.cols-7 .r{grid-template-columns:.7fr .9fr .7fr 1.1fr .8fr .9fr .8fr}}
+.faqs .q{font-weight:800;margin:var(--space-3) 0 var(--space-2);font-size:18px;color:var(--primary)}
+.faqs .a{margin:0 0 var(--space-3)}
+.verdict-box{background:#f8f9fa;padding:1.5em;border-left:4px solid var(--primary);margin:1.5em 0;border-radius:var(--radius-6)}
+.verdict-box h3{margin-top:0}
+.verdict-box ul{margin:0;padding-left:1.2em}
+.verdict-box li{margin-bottom:0.5em}
+</style>"""
 
-<style>
-body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  color: #090029;
-  background-color: #FFFFFF;
-  line-height: 1.6;
-}
-h1, h2, h3 {
-  color: #170453;
-  margin-top: 1.2em;
-  margin-bottom: 0.6em;
-  font-weight: 800;
-}
-h1 { font-size: 2em; }
-h2 { font-size: 1.5em; }
-h3 { font-size: 1.25em; }
+# ============================================================================
+# EJEMPLOS CSS (para referencia en prompts) - ACTUALIZADO
+# ============================================================================
 
-.kicker {
-  display: inline-block;
-  background-color: #C5C0D4;
-  color: #170453;
-  border: 1px solid #170453;
-  padding: 0.25em 0.6em;
-  margin-bottom: 0.8em;
-  font-size: 0.75em;
-  font-weight: 700;
-  border-radius: 999px;
-}
-
-.badges {
-  margin: 0.8em 0;
-  display: flex;
-  gap: 0.5em;
-  flex-wrap: wrap;
-}
-.badge {
-  display: inline-block;
-  background-color: #FFFFFF;
-  color: #62697A;
-  border: 1px solid #E6E6E6;
-  padding: 0.25em 0.6em;
-  font-size: 0.75em;
-  border-radius: 999px;
-}
-
-.callout {
-  border-left: 4px solid #FF8640;
-  background-color: #F4F4F4;
-  padding: 0.8em 1em;
-  margin: 1.2em 0;
-}
-.callout strong { color: #170453; }
-
-.callout-accent {
-  border-left: 4px solid #FF6000;
-  background-color: #FFAE80;
-  padding: 0.8em 1em;
-  margin: 1.2em 0;
-}
-
-.toc {
-  border: 1px dashed #E6E6E6;
-  background-color: #FFFFFF;
-  padding: 1em;
-  margin: 1.2em 0;
-  border-radius: 6px;
-}
-.toc h2 { margin-top: 0; font-size: 1em; font-weight: 800; }
-.toc ul { list-style: none; padding-left: 0; margin: 0; }
-.toc li { padding: 0.4em 0; border-bottom: 1px dashed #E6E6E6; }
-.toc li:last-child { border-bottom: none; }
-.toc a { color: #62697A; text-decoration: none; }
-.toc a:hover { color: #170453; }
-
-.verdict {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #FFFFFF;
-  padding: 1.2em;
-  margin: 1.2em 0;
-  border-radius: 10px;
-}
-.verdict h3 { color: #FFFFFF; margin-top: 0; }
-.verdict-grid { display: grid; gap: 1em; margin-top: 1em; }
-@media(min-width:768px){ .verdict-grid { grid-template-columns: 1fr 1fr; }}
-.verdict-item {
-  background-color: rgba(255,255,255,0.1);
-  padding: 0.8em;
-  border-radius: 6px;
-}
-
-.grid { display: grid; gap: 1em; margin: 1.2em 0; }
-@media(min-width:768px){
-  .grid.cols-2 { grid-template-columns: 1fr 1fr; }
-  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
-}
-.card {
-  border: 1px solid #D9D9D9;
-  padding: 1em;
-  background-color: #FFFFFF;
-  border-radius: 6px;
-}
-.card h4 { margin-top: 0; color: #170453; }
-.card .why { color: #62697A; font-size: 0.875em; margin: 0; }
-
-.lt {
-  border: 1px solid #E6E6E6;
-  border-radius: 0;
-  overflow: hidden;
-  background-color: #FFFFFF;
-  margin: 1em 0;
-}
-.lt .r { display: grid; border-top: 1px solid #E6E6E6; }
-.lt .r:first-child { border-top: none; background-color: #F4F4F4; font-weight: 800; }
-.lt .c { padding: 0.6em; }
-.lt.zebra .r:nth-child(odd):not(:first-child) { background-color: #FCFCFD; }
-.lt.cols-2 .r { grid-template-columns: 1.4fr 0.6fr; }
-.lt.cols-3 .r { grid-template-columns: 1fr 1fr 1fr; }
-
-.btns { display: flex; gap: 0.6em; flex-wrap: wrap; margin: 1.2em 0; }
-.btn {
-  display: inline-block;
-  text-decoration: none;
-  color: #FFFFFF;
-  background-color: #FF6000;
-  padding: 0.6em 1.2em;
-  border-radius: 6px;
-  font-weight: 700;
-  border: 1px solid #FF6000;
-}
-.btn:hover { transform: translateY(-1px); }
-.btn.ghost {
-  background-color: #FFFFFF;
-  color: #090029;
-  border: 1px solid #E6E6E6;
-}
-
-.hr { height: 1px; background-color: #E6E6E6; margin: 1.5em 0; border: none; }
-.note { color: #62697A; font-size: 0.875em; }
-</style>
-"""
+EJEMPLOS_CSS = CSS_CMS_COMPATIBLE
 
 # ============================================================================
 # GENERADORES DE SHORTCODES
@@ -1039,7 +965,7 @@ def generate_product_module(article_id, nombre=""):
     """Genera shortcode de producto destacado con espacios HTML"""
     shortcode = f'#MODULE_START#|{{"type":"article","params":{{"articleId":"{article_id}"}}}}|#MODULE_END#'
     # Envolver con divs para asegurar espaciado visual
-    return f'<div style="margin: 2em 0;">\n{shortcode}\n</div>'
+    return f'<div style="margin: 2em 0;">{shortcode}</div>'
 
 def generate_carousel_module(slug, category_id, order, navigation, loop, article_amount):
     """Genera shortcode de carrusel de categoría con espacios HTML"""
@@ -1059,16 +985,16 @@ def generate_carousel_module(slug, category_id, order, navigation, loop, article
         }
     }
     shortcode_str = f"#MODULE_START#|{json.dumps(shortcode)}|#MODULE_END#"
-    return f'<div style="margin: 2em 0;">\n{shortcode_str}\n</div>'
+    return f'<div style="margin: 2em 0;">{shortcode_str}</div>'
 
 # ============================================================================
-# PROMPTS PARA FLUJO DE 3 ETAPAS
+# PROMPTS PARA FLUJO DE 3 ETAPAS - ACTUALIZADOS CON CSS CORRECTO
 # ============================================================================
 
 def build_generation_prompt_stage1_draft(pdp_data, arquetipo, target_length, keywords, 
                                          context, links, modules, objetivo, 
                                          producto_alternativo, casos_uso, campos_arquetipo):
-    """ETAPA 1: Generación del BORRADOR inicial"""
+    """ETAPA 1: Generación del BORRADOR inicial - CON CSS CORREGIDO"""
     
     keywords_str = ", ".join(keywords) if keywords else "No especificadas"
     arquetipo_context = build_arquetipo_context(arquetipo['code'], campos_arquetipo)
@@ -1184,19 +1110,38 @@ CRÍTICO - CONTROL DE EXTENSIÓN:
 
 Genera HTML puro y funcional. NO uses markdown. NO uses ``` de código.
 
-La estructura debe ser:
+La estructura DEBE ser:
 
-<style>
-[CSS con paleta PcComponentes]
-</style>
+{CSS_CMS_COMPATIBLE}
 
-<article>
-[Contenido HTML completo]
-</article>
+[CONTENIDO HTML COMPLETO]
+
+# CLASES CSS OBLIGATORIAS A USAR:
+
+✅ .kicker - Para etiquetas tipo "⚡ OFERTA BLACK FRIDAY 2025"
+✅ .badges y .badge - Para tags de características
+✅ .callout - Para destacados importantes
+✅ .callout.accent - Para destacados urgentes (ofertas)
+✅ .bf-callout - Para el callout de Black Friday
+✅ .toc - Para tabla de contenidos
+✅ .lt, .lt .r, .lt .c - Para tablas de especificaciones
+✅ .lt.zebra - Para tablas con filas alternas
+✅ .lt.cols-2, .lt.cols-3 - Para definir columnas en tablas
+✅ .grid, .grid.cols-2, .grid.cols-3 - Para layouts en grid
+✅ .card - Para tarjetas de contenido
+✅ .btns, .btn, .btn.primary, .btn.ghost - Para botones
+✅ .faqs, .faqs .q, .faqs .a - Para sección de FAQs
+✅ .verdict-box - Para el box de veredicto final
+✅ .hr - Para separadores
+✅ .note - Para notas pequeñas
+
+# CALLOUT BLACK FRIDAY OBLIGATORIO (en primeros párrafos):
+
+<p class="bf-callout">⚡ <strong>Consejo:</strong> No te pierdas las mejores ofertas de PcComponentes este Black Friday. ¡Visita nuestra página de <a href="https://www.pccomponentes.com/black-friday">Black Friday</a>!</p>
 
 # ELEMENTOS HTML PERMITIDOS:
 
-✅ <h1>, <h2>, <h3>
+✅ <h1>, <h2>, <h3>, <h4>
 ✅ <p>, <strong>, <em>
 ✅ <ul>, <ol>, <li>
 ✅ <div class="...">
@@ -1205,37 +1150,48 @@ La estructura debe ser:
 
 ❌ NO usar: **, ##, [], syntax markdown
 ❌ NO usar: <script>, <iframe>
+❌ NO usar: estilos inline extensos (usa las clases CSS definidas)
 
-# CSS - USA EXACTAMENTE ESTOS ESTILOS:
+# ESTRUCTURA DE TABLAS (IMPORTANTE):
 
-<style>
-body {{
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  color: #090029;
-  background-color: #FFFFFF;
-  line-height: 1.6;
-}}
-h1, h2, h3 {{
-  color: #170453;
-  margin-top: 1.2em;
-  margin-bottom: 0.6em;
-  font-weight: 800;
-}}
-h1 {{ font-size: 2em; }}
-h2 {{ font-size: 1.5em; }}
-h3 {{ font-size: 1.25em; }}
-.kicker {{
-  display: inline-block;
-  background-color: #C5C0D4;
-  color: #170453;
-  border: 1px solid #170453;
-  padding: 0.25em 0.6em;
-  margin-bottom: 0.8em;
-  font-size: 0.75em;
-  font-weight: 700;
-  border-radius: 999px;
-}}
-</style>
+Para tablas de especificaciones, usa EXACTAMENTE esta estructura:
+
+<div class="lt cols-2 zebra" role="table">
+<div class="r"><div class="c"><strong>Especificación</strong></div><div class="c"><strong>Valor</strong></div></div>
+<div class="r"><div class="c">Tamaño</div><div class="c">27 pulgadas</div></div>
+<div class="r"><div class="c">Resolución</div><div class="c">QHD (2560×1440)</div></div>
+</div>
+
+# ESTRUCTURA DE CARDS EN GRID:
+
+<div class="grid cols-3">
+<div class="card"><h4><strong>Título</strong></h4><p class="why">Descripción</p></div>
+<div class="card"><h4><strong>Título</strong></h4><p class="why">Descripción</p></div>
+<div class="card"><h4><strong>Título</strong></h4><p class="why">Descripción</p></div>
+</div>
+
+# ESTRUCTURA DE BOTONES:
+
+<div class="btns"><a class="btn primary" href="URL">Texto principal</a> <a class="btn ghost" href="URL">Texto secundario</a></div>
+
+# ESTRUCTURA DE VEREDICTO FINAL:
+
+<div class="verdict-box">
+<h3>✅ Perfecto si:</h3>
+<ul>
+<li>Punto 1</li>
+<li>Punto 2</li>
+</ul>
+</div>
+
+# ESTRUCTURA DE FAQs:
+
+<div class="faqs">
+<h3><strong>Pregunta 1</strong></h3>
+<p>Respuesta 1</p>
+<h3><strong>Pregunta 2</strong></h3>
+<p>Respuesta 2</p>
+</div>
 
 # TONO DE MARCA PCCOMPONENTES:
 
@@ -1259,9 +1215,12 @@ h3 {{ font-size: 1.25em; }}
 4. ¿Los shortcodes están exactos (sin modificar)?
 5. ¿El tono es aspiracional?
 6. ¿Los enlaces están incluidos?
+7. ¿Usa las clases CSS definidas (NO estilos inline)?
+8. ¿Incluye el callout de Black Friday?
+9. ¿Las tablas usan la estructura .lt correcta?
 
 GENERA AHORA EL BORRADOR INICIAL.
-Responde SOLO con el HTML (desde <style> hasta </article>).
+Responde SOLO con el HTML (desde <style> hasta el final del contenido).
 """
     
     return prompt
@@ -1294,7 +1253,7 @@ Analiza el borrador con OJO CRÍTICO y responde SOLO en formato JSON:
   "necesita_ajuste_longitud": true/false,
   "problemas_encontrados": [
     {{
-      "tipo": "longitud|estructura|tono|enlaces|modulos|seo",
+      "tipo": "longitud|estructura|tono|enlaces|modulos|seo|css",
       "gravedad": "crítico|medio|menor",
       "descripcion": "Descripción del problema",
       "ubicacion": "Dónde está el problema",
@@ -1320,29 +1279,36 @@ Analiza el borrador con OJO CRÍTICO y responde SOLO en formato JSON:
    - ¿Hay markdown (**, ##, [])? → CRÍTICO
    - ¿Está bien formateado?
 
-3. **Módulos**:
+3. **CSS y Clases** (NUEVO - CRÍTICO):
+   - ¿Usa las clases CSS definidas (.kicker, .callout, .lt, .grid, etc.)?
+   - ¿Hay estilos inline que deberían ser clases?
+   - ¿El CSS está completo con variables :root?
+   - ¿Las tablas usan estructura .lt correcta?
+
+4. **Módulos**:
    - ¿Están TODOS los módulos?
    - ¿Los shortcodes están exactos?
    - ¿Tienen espaciado correcto?
 
-4. **Tono**:
+5. **Tono**:
    - ¿Es aspiracional?
    - ¿Evita negatividad?
    - ¿Suena humano?
 
-5. **Estructura**:
+6. **Estructura**:
    - ¿Sigue el arquetipo?
    - ¿Hay jerarquía HTML clara?
 
-6. **Enlaces**:
+7. **Enlaces**:
    - ¿Están los enlaces obligatorios?
    - ¿Están integrados naturalmente?
+   - ¿Incluye callout Black Friday?
 
-7. **SEO**:
+8. **SEO**:
    - ¿Keywords bien integradas?
    - ¿Títulos optimizados?
 
-8. **Valor**:
+9. **Valor**:
    - ¿Aporta información útil?
    - ¿Ayuda a tomar decisiones?
 
@@ -1373,23 +1339,34 @@ Genera la VERSIÓN FINAL del contenido aplicando TODAS las correcciones indicada
 
 1. **Longitud**: DEBE estar en rango {int(target_length * 0.95)}-{int(target_length * 1.05)} palabras
 2. **HTML puro**: Elimina TODO el markdown si quedó alguno
-3. **Módulos**: Verifica que TODOS los shortcodes estén exactos
-4. **Correcciones**: Aplica TODAS las correcciones del JSON
-5. **Calidad**: Esta es la versión final - máxima calidad
+3. **CSS**: Debe usar el CSS con variables :root (NO CSS simple)
+4. **Clases CSS**: Usa TODAS las clases definidas (.kicker, .callout, .lt, .grid, etc.)
+5. **NO estilos inline**: Reemplaza estilos inline por clases CSS
+6. **Módulos**: Verifica que TODOS los shortcodes estén exactos
+7. **Correcciones**: Aplica TODAS las correcciones del JSON
+8. **Calidad**: Esta es la versión final - máxima calidad
+
+# CSS OBLIGATORIO (debe aparecer al inicio):
+
+{CSS_CMS_COMPATIBLE}
 
 # VERIFICACIÓN FINAL:
 
 Antes de entregar, confirma:
 ✅ Longitud correcta
 ✅ HTML puro (sin markdown)
+✅ CSS con variables :root
+✅ Clases CSS usadas correctamente
+✅ Sin estilos inline innecesarios
 ✅ Todos los módulos presentes
 ✅ Todas las correcciones aplicadas
 ✅ Tono aspiracional
 ✅ Enlaces incluidos
-✅ CSS completo
+✅ Callout Black Friday presente
+✅ Tablas con estructura .lt
 
 GENERA AHORA LA VERSIÓN FINAL.
-Responde SOLO con el HTML completo (desde <style> hasta </article>).
+Responde SOLO con el HTML completo (desde <style> hasta el final).
 """
     
     return prompt
@@ -2004,13 +1981,13 @@ Caso de uso: {arquetipo['use_case']}
 
 # FORMATO OUTPUT:
 
-Genera SOLO el artículo (desde <style> hasta </article>).
+Genera SOLO el artículo comenzando con el CSS y luego el contenido HTML.
 
-{EJEMPLOS_CSS}
+# CSS OBLIGATORIO (COPIAR EXACTAMENTE):
 
-<article>
-[CONTENIDO COMPLETO]
-</article>
+{CSS_CMS_COMPATIBLE}
+
+[CONTENIDO HTML COMPLETO USANDO LAS CLASES CSS DEFINIDAS]
 
 # ADAPTACIÓN AL ARQUETIPO {arquetipo['code']}:
 
@@ -2018,11 +1995,15 @@ Genera SOLO el artículo (desde <style> hasta </article>).
 
 # ELEMENTOS OBLIGATORIOS:
 
-✅ Kicker con categoría
-✅ Título H2 optimizado
+✅ Kicker con clase .kicker
+✅ Título H1 optimizado
+✅ Callout Black Friday (clase .bf-callout)
 ✅ Estructura arquetipo {arquetipo['code']}
 ✅ Enlaces integrados
 ✅ TODOS los módulos con shortcodes exactos
+✅ Tablas con clase .lt
+✅ Cards con clase .card en .grid
+✅ Botones con clase .btn
 ✅ Tono aspiracional
 ✅ Emojis: solo ✅ ⚡ ❌
 ✅ FAQs con schema JSON-LD
@@ -2232,17 +2213,18 @@ def render_sidebar():
         st.markdown("**PcComponentes**")
         st.markdown("---")
         
-        st.markdown("### 🆕 V3.1 + GSC")
+        st.markdown("### 🆕 V3.2 - CSS Fix")
         st.markdown("✅ 18 arquetipos completos")
         st.markdown("✅ Sistema dual de módulos")
         st.markdown("✅ Campos específicos por arquetipo")
         st.markdown("✅ Búsqueda de categorías")
         st.markdown("✅ Verificación GSC")
         st.markdown("✅ Flujo 3 etapas")
+        st.markdown("✅ **CSS compatible con CMS**")
         st.markdown("---")
         
         st.markdown("### Info")
-        st.markdown("Versión 3.1 + GSC")
+        st.markdown("Versión 3.2 - CSS Fix")
         st.markdown("© 2025 PcComponentes")
 
 def main():
@@ -2252,6 +2234,7 @@ def main():
     
     st.title("Raichu Content Generator V1.0")
     st.markdown("18 Arquetipos + Sistema Dual de Módulos + Verificación GSC + Flujo 3 Etapas")
+    st.markdown("**✅ CSS corregido para compatibilidad con CMS**")
     st.markdown("---")
     
     if 'ANTHROPIC_API_KEY' not in st.secrets:
